@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import fs from 'fs/ppromises';
+import fs from 'fs/promises';
 import path from 'path';
 
 const notesFilePath = path.join(process.cwd(), 'data', 'notes.json');
 
-// PUT /api/notes/[id] 
+// PUT /api/notes/[id]
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
@@ -56,7 +56,7 @@ export async function DELETE(
     if (notes.length === initialLength) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
-    
+
     await fs.writeFile(notesFilePath, JSON.stringify(notes, null, 2), 'utf8');
 
     return NextResponse.json({ message: 'Note deleted successfully' });
