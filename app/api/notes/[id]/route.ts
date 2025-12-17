@@ -34,7 +34,7 @@ export async function PUT(
 
     return NextResponse.json(notes[noteIndex]);
   } catch (error) {
-    console.error.('Failed to update note ${params.id};', error);
+    console.error('Failed to update note:', error);
     return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });
   }
 }
@@ -61,7 +61,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Note deleted successfully' });
   } catch (error) {
-    console.error('Failed to delete note ${params.id}:', error);
+    console.error('Failed to delete note:', error);
     return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 });
   }
 }
