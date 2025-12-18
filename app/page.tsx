@@ -13,6 +13,11 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ここから追加 ---
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [selectedNoteContent, setSelectedNoteContent] = useState<string>('');
+  // ここまで追加 ---
+
   // --- ここから追加・修正 ---
   const handleCreateNewNote = async () => {
     console.log('「新規作成」ボタンがクリックされました！'); // デバッグ用ログ
@@ -37,7 +42,13 @@ export default function Home() {
       console.log('作成された新しいメモ:', newNote); // デバッグ用ログ
 
       // 3. 画面上のメモ一覧を更新する
-      setNotes(prevNotes => [newNote, ...prevNotes]);
+      setNotes(prevNotes => {
+        const updatedNotes = [newNote, ...prevNotes];
+        // --- ここから追加 ---
+        handleSelectNote(newNote); // 新規作成したメモを自動的に選択状態にする
+        // --- ここまで追加 ---
+        return updatedNotes;
+      });
     } catch (err: any) {
       console.error('エラーが発生しました:', err); // デバッグ用ログ
       // 4. エラー処理
@@ -45,6 +56,14 @@ export default function Home() {
     }
   };
   // --- ここまで追加・修正 ---
+
+  // --- ここから追加 ---
+  const handleSelectNote = (note: Note) => {
+    setSelectedNoteId(note.id);
+    setSelectedNoteContent(note.content);
+  };
+  // --- ここまで追加 ---
+
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -64,6 +83,19 @@ export default function Home() {
 
     fetchNotes();
   }, []); // 空の依存配列でコンポーネントマウント時に一度だけ実行
+
+  // --- ここから追加 ---
+  useEffect(() => {
+    if (notes.length > 0 && !selectedNoteId) {
+      // メモがロードされていて、まだ選択されていない場合、最初のメモを選択
+      handleSelectNote(notes[0]);
+    } else if (notes.length === 0) {
+      // メモが一つもない場合、選択状態をクリア
+      setSelectedNoteId(null);
+      setSelectedNoteContent('');
+    }
+  }, [notes,selectedNoteId]); // notesまたはselectedNoteIdが変わったときに実行
+  // --- ここまで追加 ---
 
   // メモのタイトルを生成するヘルパー関数
   const getNoteTitle = (content: string) => {
@@ -110,7 +142,12 @@ if (error) {
                   <a
                     href="#" // TODO: クリックで編集できるようにする
                     key={note.id}
-                    className="list-group-item list-group-item-action flex-column align-items-start"
+                    // --- ここから修正 ---
+                    onClick={() => handleSelectNote(note)} // クリックでイベントを追加
+                    className={`list-group-item list-group-item-action flex-column align-items-start" ${
+                      note.id === selectedNoteId ? 'active' : '' // 選択されたメモにactiveクラスを追加
+                    }`}
+                    // --- ここまで修正 ---
                     >
                       <div className="d-flex w-100 justify-content-between">
                         <h5 className="mb-1">{getNoteTitle(note.content)}</h5>
@@ -132,8 +169,10 @@ if (error) {
             className="form-control flex-grow-1"
             placeholder="メモをここに入力..."
             style={{ minHeight: "200px" }}
-            value={notes.length > 0 ? notes[0].content : ''} // とりあえず最初のメモを表示
-            readOnly // TODO: 編集可能にする
+            // --- ここから修正 ---
+            value={selectedNoteContent} // 選択されたメモの内容を表示
+            onChange={(e) => setSelectedNoteContent(e.target.value)} // テキストエリアの編集内容を状態に反映
+            // --- ここまで修正 ---
           ></textarea>
         </div>
       </div>
