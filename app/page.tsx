@@ -13,6 +13,39 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // --- ここから追加・修正 ---
+  const handleCreateNewNote = async () => {
+    console.log('「新規作成」ボタンがクリックされました！'); // デバッグ用ログ
+
+    try {
+      // 1. APIを呼び出す
+      const response = await fetch('/api/notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: '新しい無題のメモ' }), // 空ではなく少しテキストを入れる
+      });
+
+      console.log('APIからのレスポンス:', response); // デバッグ用ログ
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      // 2. レスポンスをJSONとして解釈する
+      const newNote: Note = await response.json();
+      console.log('作成された新しいメモ:', newNote); // デバッグ用ログ
+
+      // 3. 画面上のメモ一覧を更新する
+      setNotes(prevNotes => [newNote, ...prevNotes]);
+    } catch (err: any) {
+      console.error('エラーが発生しました:', err); // デバッグ用ログ
+      // 4. エラー処理
+      setError(err.message);
+    }
+  };
+  // --- ここまで追加・修正 ---
+
   useEffect(() => {
     const fetchNotes = async () => {
       try {
@@ -89,7 +122,7 @@ if (error) {
               </div>
             )}
           </div>
-          <button className="btn btn-primary mt-3">新規作成</button>
+          <button className="btn btn-primary mt-3" onClick={handleCreateNewNote}>新規作成</button>
         </div>
 
         {/* 右ペイン: 編集エリア */}
