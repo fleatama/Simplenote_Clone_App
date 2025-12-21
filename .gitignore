@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# GEMINIの指示ファイル→これに関しては別途バックアップを行う。
+simplenote-clone/GEMINI.md
+/Users/yamadatarou/environment_backup/JavaScript/Simplenote_Clone_App/simplenote-clone/GEMINI.md

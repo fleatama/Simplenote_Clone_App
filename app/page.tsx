@@ -1,4 +1,5 @@
 "use client"; // クライアントコンポーネントであることを宣言
+
 import React, { useState, useEffect } from "react";
 
 interface Note {
