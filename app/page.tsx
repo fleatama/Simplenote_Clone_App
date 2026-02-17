@@ -17,6 +17,35 @@ export default function Home() {
   // ここから追加 ---
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedNoteContent, setSelectedNoteContent] = useState<string>('');
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // --- ここから追加・修正 ---
+  const handleSaveNote = async (noteId: string, content: string) => {
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const updatedNote: Note = await response.json();
+      console.log('メモが更新されました:', updatedNote);
+
+      setNotes(prevNotes =>
+        prevNotes.map(note => (note.id === updatedNote.id ? updatedNote : note))
+      );
+    } catch (err: any) {
+      console.error('メモの更新中にエラーが発生しました:', err);
+      setError(err.message);
+    }
+  };
+  // --- ここまで追加・修正 ---
   // ここまで追加 ---
 
   // --- ここから追加・修正 ---
@@ -172,7 +201,21 @@ if (error) {
             style={{ minHeight: "200px" }}
             // --- ここから修正 ---
             value={selectedNoteContent} // 選択されたメモの内容を表示
-            onChange={(e) => setSelectedNoteContent(e.target.value)} // テキストエリアの編集内容を状態に反映
+            onChange={(e) => {
+              const newContent = e.target.value;
+              setSelectedNoteContent(newContent);
+
+              if (typingTimeout) {
+                clearTimeout(typingTimeout);
+              }
+
+              if (selectedNoteId) {
+                const newTimeout = setTimeout(() => {
+                  handleSaveNote(selectedNoteId, newContent);
+                }, 1000); // 1秒後に保存
+                setTypingTimeout(newTimeout);
+              }
+            }} // テキストエリアの編集内容を状態に反映
             // --- ここまで修正 ---
           ></textarea>
         </div>
