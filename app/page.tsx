@@ -79,6 +79,33 @@ export default function Home() {
     setSelectedNoteContent(note.content);
   };
 
+  // メモを削除する関数
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm('このメモを削除してもよろしいですか？')) return;
+
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('削除に失敗しました');
+      }
+
+      // 画面上のリストから削除したメモを除外する
+      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+
+      // もし削除したメモが今選択中のものだったら、選択を解除する
+      if (selectedNoteId === noteId) {
+        setSelectedNoteId(null);
+        setSelectedNoteContent('');
+      }
+    } catch (err: any) {
+      console.error('削除中にエラーが発生しました:', err);
+      setError(err.message);
+    }
+  };
+
   // タイムスタンプ挿入
   const handleInsertTimestamp = () => {
     if (!textareaRef.current) return;
@@ -196,7 +223,9 @@ export default function Home() {
               </div>
             )}
           </div>
-          <button className="btn btn-primary mt-3" onClick={handleCreateNewNote}>新規作成</button>
+          <button className="btn btn-primary mt-3 d-flex align-items-center justify-content-center" onClick={handleCreateNewNote} title="新規作成">
+            <i className="bi bi-plus-lg"></i>
+          </button>
         </div>
 
         <div className="col-md-8 p-3 d-flex flex-column">
@@ -207,9 +236,14 @@ export default function Home() {
               {saveStatus === 'saved' && <small className="ms-3 text-success" style={{ fontSize: '0.5em' }}>✓ 保存済み</small>}
               {saveStatus === 'error' && <small className="ms-3 text-danger" style={{ fontSize: '0.5em' }}>⚠️ 保存失敗</small>}
             </h2>
-            <button className="btn btn-secondary" onClick={handleInsertTimestamp} disabled={selectedNoteId === null}>
-              タイムスタンプ挿入
-            </button>
+            <div className="d-flex gap-2">
+              <button className="btn btn-outline-danger d-flex align-items-center" onClick={() => selectedNoteId && handleDeleteNote(selectedNoteId)} disabled={selectedNoteId === null} title="削除">
+                <i className="bi bi-trash"></i>
+              </button>
+              <button className="btn btn-secondary d-flex align-items-center" onClick={handleInsertTimestamp} disabled={selectedNoteId === null} title="タイムスタンプ挿入">
+                <i className="bi bi-clock"></i>
+              </button>
+            </div>
           </div>
           <textarea
             ref={textareaRef}
