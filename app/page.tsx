@@ -1,6 +1,6 @@
 "use client"; // クライアントコンポーネントであることを宣言
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react"; // 1. useRef を追加
 
 interface Note {
   id: string;
@@ -11,13 +11,13 @@ interface Note {
 
 export default function Home() {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // ここから追加 ---
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedNoteContent, setSelectedNoteContent] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // --- ここから追加・修正 ---
   const handleSaveNote = async (noteId: string, content: string) => {
@@ -94,6 +94,28 @@ export default function Home() {
   };
   // --- ここまで追加 ---
 
+  const handleInsertTimestamp = () => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const cursorPosition = textarea.selectionStart;
+    const now = new Date();
+    const timestamp = now.toLocaleString(); // 例: "2024/2/18 12:30:00"
+      
+    const newContent =
+      selectedNoteContent.substring(0, cursorPosition) +
+      timestamp +
+      selectedNoteContent.substring(cursorPosition);
+    
+    setSelectedNoteContent(newContent);
+    
+    // タイムスタンプ挿入後にフォーカスを戻し、カーソル位置を調整
+    textarea.focus();
+    // ここで setTimeout を使い、React のレンダリングが終わった後にカーソル位置をセットします
+    setTimeout(() => {
+      textarea.setSelectionRange(cursorPosition + timestamp.length, cursorPosition + timestamp.length);
+    }, 0);
+  };
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -195,28 +217,23 @@ if (error) {
         {/* 右ペイン: 編集エリア */}
         <div className="col-md-8 p-3 d-flex flex-column">
           <h2 className="mb-3">メモを編集</h2>
+          {/* ▼▼▼ 【4. タイムスタンプボタンを追加】 ▼▼▼ */}
+          <button 
+            className="btn btn-secondary mb-3" // 余白を追加
+            onClick={handleInsertTimestamp}
+            disabled={!selectedNoteId === null} // シンプルな条件に変更
+          >
+            タイムスタンプ挿入
+          </button>
           <textarea
+            ref={textareaRef}
             className="form-control flex-grow-1"
-            placeholder="メモをここに入力..."
+            placeholder="メモ選択するか、新規作成してください。"
             style={{ minHeight: "200px" }}
             // --- ここから修正 ---
-            value={selectedNoteContent} // 選択されたメモの内容を表示
-            onChange={(e) => {
-              const newContent = e.target.value;
-              setSelectedNoteContent(newContent);
-
-              if (typingTimeout) {
-                clearTimeout(typingTimeout);
-              }
-
-              if (selectedNoteId) {
-                const newTimeout = setTimeout(() => {
-                  handleSaveNote(selectedNoteId, newContent);
-                }, 1000); // 1秒後に保存
-                setTypingTimeout(newTimeout);
-              }
-            }} // テキストエリアの編集内容を状態に反映
-            // --- ここまで修正 ---
+            value={selectedNoteId !== null ? selectedNoteContent : ""} // 変数名を修正
+            onChange={(e) => setSelectedNoteContent(e.target.value)}
+            disabled={!selectedNoteId === null} // シンプルな条件に変更
           ></textarea>
         </div>
       </div>
