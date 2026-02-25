@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Simplenote Clone App (with Timestamp Feature)
 
-## Getting Started
+本プロジェクトは、シンプルな自動同期メモアプリ「Simplenote」のクローンアプリケーションです。
+標準的な機能に加え、ユーザーの利便性を高める独自の**タイムスタンプ挿入機能**を実装しています。
 
-First, run the development server:
+## 🚀 特徴
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **自動保存 (Autosave):** ユーザーがタイピングを止めてから2秒後に自動でデータを保存（デバウンス処理を実装）。
+- **独自タイムスタンプ機能:** ボタン一つで、現在の日時をカーソル位置に即座に挿入。
+- **フルスタック構成:** フロントエンドからバックエンドAPI、データベース連携まで一貫して構築。
+- **レスポンシブデザイン:** Bootstrapを使用した、シンプルで清潔感のある2ペインレイアウト。
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠 使用技術
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### フロントエンド / バックエンド (Full-stack)
+- **Next.js 16.0.10** (App Router, Turbopack)
+- **React 19.2.1**
+- **TypeScript 5.x**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### データベース (Database)
+- **Upstash Redis** (Serverless Redis)
+- **@upstash/redis 1.36.2**
 
-## Learn More
+### UI / デザイン
+- **Bootstrap 5.3.8**
+- **Bootstrap Icons 1.13.1**
 
-To learn more about Next.js, take a look at the following resources:
+### インフラ / デプロイ
+- **Vercel**
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔧 こだわったポイント・解決した課題
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **UXを損なわない自動保存:** 
+   頻繁なAPI通信を抑えるため、`setTimeout` と `clearTimeout` を活用したデバウンス処理を実装。保存状態を視覚的に伝える「保存中/保存済み」ステータスも追加しました。
+2. **環境に依存しないAPI設計:** 
+   Vercel環境特有のURL解析の課題に対し、`params` に依存せず `request.url` から直接IDを取得する柔軟なロジックへと改善。
+3. **最新技術の採用:** 
+   React 19 や Next.js 16 (Turbopack) といった最新のライブラリを使用し、モダンな開発環境での構築に挑戦しました。
 
-## Deploy on Vercel
+## 🏃‍♂️ 実行方法
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. リポジトリをクローン
+2. 依存関係のインストール: `npm install`
+3. 環境変数の設定: `.env.local` を作成し、Upstash Redis の認証情報を設定
+4. 開発サーバーの起動: `npm run dev`
