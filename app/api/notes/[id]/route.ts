@@ -1,33 +1,37 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 
 const notesFilePath = path.join(process.cwd(), 'data', 'notes.json');
 
-// PUT /api/notes/[id]
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// PUT /api/notes/[id] (メモの更新)
+export async function PUT(request: Request) {
   try {
-    const { id } = params;
-    const updateNoteData = await request.json();
+    // URLからIDを取得
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+
+    if (!id) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    }
+
+    const updatedNoteData = await request.json();
 
     const fileContents = await fs.readFile(notesFilePath, 'utf8');
     let notes = JSON.parse(fileContents);
 
-    const noteIndex = notes.findIndex((note: any) => note.id == id);
+    const noteIndex = notes.findIndex((note: any) => note.id === id);
 
-    if (noteIndex == -1) {
+    if (noteIndex === -1) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
 
     const now = new Date().toISOString();
     notes[noteIndex] = {
       ...notes[noteIndex],
-      ...updateNoteData,
+      ...updatedNoteData,
       updatedAt: now,
-      id: id, // IDは変更しない
+      id: id,
     };
 
     await fs.writeFile(notesFilePath, JSON.stringify(notes, null, 2), 'utf8');
@@ -39,13 +43,16 @@ export async function PUT(
   }
 }
 
-// DELETE /api/notes/[id]
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// DELETE /api/notes/[id] (メモの削除)
+export async function DELETE(request: Request) {
   try {
-    const { id } = params;
+    // URLからIDを取得
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+
+    if (!id) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    }
 
     const fileContents = await fs.readFile(notesFilePath, 'utf8');
     let notes = JSON.parse(fileContents);
@@ -65,4 +72,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 });
   }
 }
-
