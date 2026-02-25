@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { Redis } from '@upstash/redis';
 
-const notesFilePath = path.join(process.cwd(), 'data', 'notes.json');
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL!,
+  token: process.env.KV_REST_API_TOKEN!,
+});
+
+const REDIS_KEY = 'simplenote_clone_notes';
 
 // PUT /api/notes/[id] (メモの更新)
 export async function PUT(request: Request) {
   try {
-    // URLからIDを取得
     const url = new URL(request.url);
     const id = url.pathname.split('/').pop();
 
@@ -17,28 +20,27 @@ export async function PUT(request: Request) {
 
     const updatedNoteData = await request.json();
 
-    const fileContents = await fs.readFile(notesFilePath, 'utf8');
-    let notes = JSON.parse(fileContents);
+    // Redisから既存のメモを取得
+    const existingNote: any = await redis.hget(REDIS_KEY, id);
 
-    const noteIndex = notes.findIndex((note: any) => note.id === id);
-
-    if (noteIndex === -1) {
+    if (!existingNote) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
 
     const now = new Date().toISOString();
-    notes[noteIndex] = {
-      ...notes[noteIndex],
+    const updatedNote = {
+      ...existingNote,
       ...updatedNoteData,
       updatedAt: now,
       id: id,
     };
 
-    await fs.writeFile(notesFilePath, JSON.stringify(notes, null, 2), 'utf8');
+    // Redisに上書き保存
+    await redis.hset(REDIS_KEY, { [id]: updatedNote });
 
-    return NextResponse.json(notes[noteIndex]);
+    return NextResponse.json(updatedNote);
   } catch (error) {
-    console.error('Failed to update note:', error);
+    console.error('Failed to update note in DB:', error);
     return NextResponse.json({ error: 'Failed to update note' }, { status: 500 });
   }
 }
@@ -46,7 +48,6 @@ export async function PUT(request: Request) {
 // DELETE /api/notes/[id] (メモの削除)
 export async function DELETE(request: Request) {
   try {
-    // URLからIDを取得
     const url = new URL(request.url);
     const id = url.pathname.split('/').pop();
 
@@ -54,21 +55,16 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    const fileContents = await fs.readFile(notesFilePath, 'utf8');
-    let notes = JSON.parse(fileContents);
+    // RedisのHashから指定したIDのフィールドを削除
+    const deletedCount = await redis.hdel(REDIS_KEY, id);
 
-    const initialLength = notes.length;
-    notes = notes.filter((note: any) => note.id !== id);
-
-    if (notes.length === initialLength) {
+    if (deletedCount === 0) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
 
-    await fs.writeFile(notesFilePath, JSON.stringify(notes, null, 2), 'utf8');
-
     return NextResponse.json({ message: 'Note deleted successfully' });
   } catch (error) {
-    console.error('Failed to delete note:', error);
+    console.error('Failed to delete note from DB:', error);
     return NextResponse.json({ error: 'Failed to delete note' }, { status: 500 });
   }
 }
