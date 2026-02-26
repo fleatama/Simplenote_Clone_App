@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 interface Note {
   id: string;
@@ -10,6 +11,8 @@ interface Note {
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedNoteContent, setSelectedNoteContent] = useState<string>('');
@@ -17,8 +20,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  
-  // ダークモード用の状態
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -31,7 +32,6 @@ export default function Home() {
     document.documentElement.setAttribute('data-bs-theme', newTheme);
   };
 
-  // 初期テーマの読み込み
   useEffect(() => {
     const savedTheme = localStorage.getItem('simplenote-theme') as 'light' | 'dark';
     if (savedTheme) {
@@ -40,7 +40,7 @@ export default function Home() {
     }
   }, []);
 
-  // メモを保存する関数
+  // メモを保存
   const handleSaveNote = async (noteId: string, content: string) => {
     setSaveStatus('saving');
     try {
@@ -114,20 +114,31 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const fetchNotes = async () => {
-      try {
-        const response = await fetch('/api/notes');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data: Note[] = await response.json();
-        setNotes(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchNotes();
-  }, []);
+    if (status === "authenticated") {
+      const fetchNotes = async () => {
+        try {
+          const response = await fetch('/api/notes');
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data: Note[] = await response.json();
+          setNotes(data);
+        } catch (err: any) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchNotes();
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (notes.length > 0 && !selectedNoteId) {
+      handleSelectNote(notes[0]);
+    } else if (notes.length === 0) {
+      setSelectedNoteId(null);
+      setSelectedNoteContent('');
+    }
+  }, [notes, selectedNoteId]);
 
   useEffect(() => {
     if (!selectedNoteId) return;
@@ -158,13 +169,26 @@ export default function Home() {
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
 
-  if (loading) return <div className="vh-100 d-flex justify-content-center align-items-center"><div className="spinner-border text-secondary" /></div>;
-  if (error) return <div className="vh-100 d-flex justify-content-center align-items-center text-danger">Error: {error}</div>;
+  // 1. ローディング中の表示
+  if (status === "loading") return <div className="vh-100 d-flex justify-content-center align-items-center bg-body"><div className="spinner-border text-secondary" /></div>;
 
+  // 2. ログインしていないときの表示
+  if (status === "unauthenticated") {
+    return (
+      <div className="vh-100 d-flex flex-column justify-content-center align-items-center bg-body">
+        <h1 className="mb-4 fw-bold">Simplenote Clone</h1>
+        <p className="text-muted mb-4">書きたいときに、すぐに。シンプルで高速なメモアプリ。</p>
+        <button className="btn btn-primary btn-lg d-flex align-items-center gap-2" onClick={() => signIn("google")}>
+          <i className="bi bi-google"></i> Googleでログイン
+        </button>
+      </div>
+    );
+  }
+
+  // 3. ログインしているときの表示
   return (
     <div className="container-fluid p-0 overflow-hidden">
       <div className="row g-0 vh-100">
-        {/* 左ペイン: メモ一覧 */}
         <div className="col-md-4 border-end d-flex flex-column h-100">
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
             <h6 className="mb-0 fw-bold text-secondary text-uppercase tracking-wider" style={{ fontSize: '0.75rem' }}>All Notes</h6>
@@ -173,7 +197,9 @@ export default function Home() {
             </button>
           </div>
           <div className="flex-grow-1 overflow-auto bg-body">
-            {notes.length === 0 ? (
+            {loading ? (
+              <div className="p-4 text-center"><div className="spinner-border spinner-border-sm text-secondary" /></div>
+            ) : notes.length === 0 ? (
               <div className="p-4 text-center text-muted small">メモがありません</div>
             ) : (
               <div className="list-group list-group-flush">
@@ -202,10 +228,19 @@ export default function Home() {
               </div>
             )}
           </div>
+          {/* ユーザー情報とログアウトボタンを追加 */}
+          <div className="p-3 border-top bg-body-tertiary d-flex justify-content-between align-items-center">
+            <div className="d-flex align-items-center gap-2 overflow-hidden">
+              {session?.user?.image && <img src={session.user.image} width={24} height={24} className="rounded-circle" alt="User" />}
+              <small className="text-muted text-truncate">{session?.user?.name}</small>
+            </div>
+            <button className="btn btn-sm btn-link text-muted p-0 border-0" onClick={() => signOut()} title="ログアウト">
+              <i className="bi bi-box-arrow-right fs-5"></i>
+            </button>
+          </div>
         </div>
 
-        {/* 右ペイン: 編集エリア */}
-        <div className="col-md-8 d-flex flex-column h-100">
+        <div className="col-md-8 d-flex flex-column h-100 bg-body">
           <div className="px-4 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: '57px' }}>
             <div className="text-muted" style={{ fontSize: '0.75rem' }}>
               {selectedNote && (
@@ -222,7 +257,6 @@ export default function Home() {
                 {saveStatus === 'error' && <small className="text-danger">⚠️ 失敗</small>}
               </div>
               <div className="d-flex gap-2">
-                {/* テーマ切り替えボタン */}
                 <button className="btn btn-sm btn-outline-secondary border-0" onClick={toggleTheme} title="テーマ切り替え">
                   <i className={`bi bi-${theme === 'light' ? 'moon-fill' : 'sun-fill'}`}></i>
                 </button>
@@ -239,11 +273,7 @@ export default function Home() {
             ref={textareaRef}
             className="form-control border-0 flex-grow-1 p-4 fs-5 bg-body text-body"
             placeholder="ここにメモを入力..."
-            style={{ 
-              resize: 'none', 
-              boxShadow: 'none', 
-              lineHeight: '1.6', 
-            }}
+            style={{ resize: 'none', boxShadow: 'none', lineHeight: '1.6' }}
             value={selectedNoteId !== null ? selectedNoteContent : ""}
             onChange={(e) => setSelectedNoteContent(e.target.value)}
             disabled={!selectedNoteId}
