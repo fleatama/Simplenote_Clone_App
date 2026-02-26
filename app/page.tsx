@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { getNoteTitle, formatDateTime } from "../utils/helpers";
 
 interface Note {
   id: string;
@@ -152,20 +153,6 @@ export default function Home() {
     setTypingTimeout(newTimeout);
     return () => { if (newTimeout) clearTimeout(newTimeout); };
   }, [selectedNoteContent, selectedNoteId]);
-
-  const getNoteTitle = (content: string) => {
-    const firstLine = content.trim().split('\n')[0];
-    return firstLine.length > 25 ? firstLine.substring(0, 25) + '...' : firstLine;
-  };
-
-  const formatDateTime = (isoString: string) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    return date.toLocaleString('ja-JP', { 
-      year: 'numeric', month: '2-digit', day: '2-digit', 
-      hour: '2-digit', minute: '2-digit' 
-    });
-  };
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
 
