@@ -1,28 +1,30 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
+import { auth } from "@/auth";
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
   token: process.env.KV_REST_API_TOKEN!,
 });
 
-const REDIS_KEY = 'simplenote_clone_notes';
+const getUserKey = (userId: string) => `user:${userId}:notes`;
 
 // PUT /api/notes/[id] (メモの更新)
 export async function PUT(request: Request) {
   try {
-    const url = new URL(request.url);
-    const id = url.pathname.split('/').pop();
-
-    if (!id) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    if (!id) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+
+    const userKey = getUserKey(session.user.id);
     const updatedNoteData = await request.json();
 
-    // Redisから既存のメモを取得
-    const existingNote: any = await redis.hget(REDIS_KEY, id);
-
+    const existingNote: any = await redis.hget(userKey, id);
     if (!existingNote) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
@@ -35,8 +37,7 @@ export async function PUT(request: Request) {
       id: id,
     };
 
-    // Redisに上書き保存
-    await redis.hset(REDIS_KEY, { [id]: updatedNote });
+    await redis.hset(userKey, { [id]: updatedNote });
 
     return NextResponse.json(updatedNote);
   } catch (error) {
@@ -48,15 +49,17 @@ export async function PUT(request: Request) {
 // DELETE /api/notes/[id] (メモの削除)
 export async function DELETE(request: Request) {
   try {
-    const url = new URL(request.url);
-    const id = url.pathname.split('/').pop();
-
-    if (!id) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // RedisのHashから指定したIDのフィールドを削除
-    const deletedCount = await redis.hdel(REDIS_KEY, id);
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    if (!id) return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+
+    const userKey = getUserKey(session.user.id);
+    const deletedCount = await redis.hdel(userKey, id);
 
     if (deletedCount === 0) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
