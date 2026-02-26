@@ -23,6 +23,9 @@ export default function Home() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
+  // 一括操作用の状態
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // テーマ切り替え
@@ -85,18 +88,72 @@ export default function Home() {
     setSelectedNoteContent(note.content);
   };
 
+  // 個別削除
   const handleDeleteNote = async (noteId: string) => {
     if (!confirm('このメモを削除してもよろしいですか？')) return;
     try {
       const response = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('削除に失敗しました');
       setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+      setCheckedIds(prev => {
+        const next = new Set(prev);
+        next.delete(noteId);
+        return next;
+      });
       if (selectedNoteId === noteId) {
         setSelectedNoteId(null);
         setSelectedNoteContent('');
       }
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  // 一括削除
+  const handleBulkDelete = async () => {
+    if (checkedIds.size === 0) return;
+    if (!confirm(`${checkedIds.size} 件のメモを一括削除してもよろしいですか？`)) return;
+
+    try {
+      // 選択された各IDに対して削除APIを叩く
+      const deletePromises = Array.from(checkedIds).map(id => 
+        fetch(`/api/notes/${id}`, { method: 'DELETE' })
+      );
+      
+      await Promise.all(deletePromises);
+
+      // 状態を一括更新
+      setNotes(prevNotes => prevNotes.filter(note => !checkedIds.has(note.id)));
+      if (selectedNoteId && checkedIds.has(selectedNoteId)) {
+        setSelectedNoteId(null);
+        setSelectedNoteContent('');
+      }
+      setCheckedIds(new Set());
+    } catch (err: any) {
+      console.error('一括削除中にエラーが発生しました:', err);
+      setError('一括削除の一部または全部に失敗しました');
+    }
+  };
+
+  // チェックボックスの切り替え
+  const toggleCheck = (id: string) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // 全選択・解除
+  const toggleSelectAll = () => {
+    if (checkedIds.size === notes.length) {
+      setCheckedIds(new Set());
+    } else {
+      setCheckedIds(new Set(notes.map(n => n.id)));
     }
   };
 
@@ -156,10 +213,8 @@ export default function Home() {
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
 
-  // 1. ローディング中の表示
   if (status === "loading") return <div className="vh-100 d-flex justify-content-center align-items-center bg-body"><div className="spinner-border text-secondary" /></div>;
 
-  // 2. ログインしていないときの表示
   if (status === "unauthenticated") {
     return (
       <div className="vh-100 d-flex flex-column justify-content-center align-items-center bg-body">
@@ -172,13 +227,25 @@ export default function Home() {
     );
   }
 
-  // 3. ログインしているときの表示
   return (
     <div className="container-fluid p-0 overflow-hidden">
       <div className="row g-0 vh-100">
         <div className="col-md-4 border-end d-flex flex-column h-100">
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
-            <h6 className="mb-0 fw-bold text-secondary text-uppercase tracking-wider" style={{ fontSize: '0.75rem' }}>All Notes</h6>
+            <div className="d-flex align-items-center gap-3">
+              <input 
+                type="checkbox" 
+                className="form-check-input m-0" 
+                checked={notes.length > 0 && checkedIds.size === notes.length}
+                onChange={toggleSelectAll}
+                title="すべて選択/解除"
+              />
+              {checkedIds.size > 0 && (
+                <button className="btn btn-link text-danger p-0 border-0" onClick={handleBulkDelete} title="選択したメモを削除">
+                  <i className="bi bi-trash-fill fs-5"></i>
+                </button>
+              )}
+            </div>
             <button className="btn btn-link text-body p-0 border-0" onClick={handleCreateNewNote} title="新規作成">
               <i className="bi bi-pencil-square fs-5"></i>
             </button>
@@ -191,31 +258,39 @@ export default function Home() {
             ) : (
               <div className="list-group list-group-flush">
                 {notes.map((note) => (
-                  <a
-                    href="#"
-                    key={note.id}
-                    onClick={(e) => { e.preventDefault(); handleSelectNote(note); }}
-                    className={`list-group-item list-group-item-action py-3 border-bottom ${
-                      note.id === selectedNoteId ? 'active' : ''
-                    }`}
-                  >
-                    <div className="d-flex w-100 justify-content-between align-items-center">
-                      <h6 className={`mb-1 fw-semibold ${note.id === selectedNoteId ? 'text-white' : 'text-body'}`}>
-                        {getNoteTitle(note.content) || '無題のメモ'}
-                      </h6>
-                      <small className={note.id === selectedNoteId ? 'text-white-50' : 'text-muted'} style={{ fontSize: '0.7rem' }}>
-                        {formatDateTime(note.updatedAt)}
-                      </small>
+                  <div key={note.id} className="d-flex align-items-stretch border-bottom">
+                    <div className="px-3 d-flex align-items-center bg-body">
+                      <input 
+                        type="checkbox" 
+                        className="form-check-input" 
+                        checked={checkedIds.has(note.id)}
+                        onChange={() => toggleCheck(note.id)}
+                      />
                     </div>
-                    <p className={`mb-0 small text-truncate ${note.id === selectedNoteId ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '0.8rem' }}>
-                      {note.content.split('\n').slice(1).join(' ') || '内容なし'}
-                    </p>
-                  </a>
+                    <a
+                      href="#"
+                      onClick={(e) => { e.preventDefault(); handleSelectNote(note); }}
+                      className={`list-group-item list-group-item-action py-3 border-0 flex-grow-1 ${
+                        note.id === selectedNoteId ? 'active' : ''
+                      }`}
+                    >
+                      <div className="d-flex w-100 justify-content-between align-items-center">
+                        <h6 className={`mb-1 fw-semibold ${note.id === selectedNoteId ? 'text-white' : 'text-body'}`}>
+                          {getNoteTitle(note.content) || '無題のメモ'}
+                        </h6>
+                        <small className={note.id === selectedNoteId ? 'text-white-50' : 'text-muted'} style={{ fontSize: '0.7rem' }}>
+                          {formatDateTime(note.updatedAt)}
+                        </small>
+                      </div>
+                      <p className={`mb-0 small text-truncate ${note.id === selectedNoteId ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '0.8rem' }}>
+                        {note.content.split('\n').slice(1).join(' ') || '内容なし'}
+                      </p>
+                    </a>
+                  </div>
                 ))}
               </div>
             )}
           </div>
-          {/* ユーザー情報とログアウトボタンを追加 */}
           <div className="p-3 border-top bg-body-tertiary d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-center gap-2 overflow-hidden">
               {session?.user?.image && <img src={session.user.image} width={24} height={24} className="rounded-circle" alt="User" />}
@@ -239,7 +314,7 @@ export default function Home() {
             </div>
             <div className="d-flex align-items-center gap-3">
               <div className="save-status">
-                {saveStatus === 'saving' && <small className="text-muted animate-pulse">保存中...</small>}
+                {saveStatus === 'saving' && <small className="text-muted">保存中...</small>}
                 {saveStatus === 'saved' && <small className="text-success fw-bold">✓ 保存済み</small>}
                 {saveStatus === 'error' && <small className="text-danger">⚠️ 失敗</small>}
               </div>
