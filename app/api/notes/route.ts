@@ -7,7 +7,6 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 });
 
-// ユーザーごとのキーを生成するヘルパー
 const getUserKey = (userId: string) => `user:${userId}:notes`;
 
 // GET /api/notes (メモ一覧の取得)
@@ -43,9 +42,8 @@ export async function POST(request: Request) {
     const userKey = getUserKey(session.user.id);
     const newNoteData = await request.json();
 
-    const allNotes: Record<string, any> = await redis.hgetall(userKey) || {};
-    const ids = Object.keys(allNotes).map(id => parseInt(id));
-    const newId = ids.length > 0 ? (Math.max(...ids) + 1).toString() : "1";
+    // UUIDを生成 (絶対に重複しないID)
+    const newId = crypto.randomUUID();
 
     const now = new Date().toISOString();
     const newNote = {
@@ -55,6 +53,7 @@ export async function POST(request: Request) {
       updatedAt: now,
     };
 
+    // Redisに保存
     await redis.hset(userKey, { [newId]: newNote });
 
     return NextResponse.json(newNote, { status: 201 });
