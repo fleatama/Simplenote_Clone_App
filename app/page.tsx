@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { getNoteTitle, formatDateTime } from "../utils/helpers";
+import NoteList from "./components/NoteList";
 
 interface Note {
   id: string;
@@ -251,45 +252,14 @@ export default function Home() {
             </button>
           </div>
           <div className="flex-grow-1 overflow-auto bg-body">
-            {loading ? (
-              <div className="p-4 text-center"><div className="spinner-border spinner-border-sm text-secondary" /></div>
-            ) : notes.length === 0 ? (
-              <div className="p-4 text-center text-muted small">メモがありません</div>
-            ) : (
-              <div className="list-group list-group-flush">
-                {notes.map((note) => (
-                  <div key={note.id} className="d-flex align-items-stretch border-bottom">
-                    <div className="px-3 d-flex align-items-center bg-body">
-                      <input 
-                        type="checkbox" 
-                        className="form-check-input" 
-                        checked={checkedIds.has(note.id)}
-                        onChange={() => toggleCheck(note.id)}
-                      />
-                    </div>
-                    <a
-                      href="#"
-                      onClick={(e) => { e.preventDefault(); handleSelectNote(note); }}
-                      className={`list-group-item list-group-item-action py-3 border-0 flex-grow-1 ${
-                        note.id === selectedNoteId ? 'active' : ''
-                      }`}
-                    >
-                      <div className="d-flex w-100 justify-content-between align-items-center">
-                        <h6 className={`mb-1 fw-semibold ${note.id === selectedNoteId ? 'text-white' : 'text-body'}`}>
-                          {getNoteTitle(note.content) || '無題のメモ'}
-                        </h6>
-                        <small className={note.id === selectedNoteId ? 'text-white-50' : 'text-muted'} style={{ fontSize: '0.7rem' }}>
-                          {formatDateTime(note.updatedAt)}
-                        </small>
-                      </div>
-                      <p className={`mb-0 small text-truncate ${note.id === selectedNoteId ? 'text-white-50' : 'text-muted'}`} style={{ fontSize: '0.8rem' }}>
-                        {note.content.split('\n').slice(1).join(' ') || '内容なし'}
-                      </p>
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
+            <NoteList 
+              notes={notes}
+              selectedNoteId={selectedNoteId}
+              checkedIds={checkedIds}
+              loading={loading}
+              onSelectNote={handleSelectNote}
+              onToggleCheck={toggleCheck}
+            />
           </div>
           <div className="p-3 border-top bg-body-tertiary d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-center gap-2 overflow-hidden">
