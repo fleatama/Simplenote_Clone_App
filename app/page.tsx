@@ -4,6 +4,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { getNoteTitle, formatDateTime } from "../utils/helpers";
 import NoteList from "./components/NoteList";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 interface Note {
   id: string;
@@ -11,6 +15,9 @@ interface Note {
   createdAt: string;
   updatedAt: string;
 }
+
+// 表示モードの型定義
+type ViewMode = 'source' | 'split' | 'reading';
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -23,9 +30,10 @@ export default function Home() {
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  
-  // 一括操作用の状態
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  
+  // Obsidian風の表示モード状態
+  const [viewMode, setViewMode] = useState<ViewMode>('source');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,6 +87,7 @@ export default function Home() {
       const newNote: Note = await response.json();
       setNotes(prevNotes => [newNote, ...prevNotes]);
       handleSelectNote(newNote);
+      setViewMode('source'); // 新規作成時は編集モードにする
     } catch (err: any) {
       setError(err.message);
     }
@@ -114,16 +123,9 @@ export default function Home() {
   const handleBulkDelete = async () => {
     if (checkedIds.size === 0) return;
     if (!confirm(`${checkedIds.size} 件のメモを一括削除してもよろしいですか？`)) return;
-
     try {
-      // 選択された各IDに対して削除APIを叩く
-      const deletePromises = Array.from(checkedIds).map(id => 
-        fetch(`/api/notes/${id}`, { method: 'DELETE' })
-      );
-      
+      const deletePromises = Array.from(checkedIds).map(id => fetch(`/api/notes/${id}`, { method: 'DELETE' }));
       await Promise.all(deletePromises);
-
-      // 状態を一括更新
       setNotes(prevNotes => prevNotes.filter(note => !checkedIds.has(note.id)));
       if (selectedNoteId && checkedIds.has(selectedNoteId)) {
         setSelectedNoteId(null);
@@ -131,31 +133,22 @@ export default function Home() {
       }
       setCheckedIds(new Set());
     } catch (err: any) {
-      console.error('一括削除中にエラーが発生しました:', err);
-      setError('一括削除の一部または全部に失敗しました');
+      setError('一括削除に失敗しました');
     }
   };
 
-  // チェックボックスの切り替え
   const toggleCheck = (id: string) => {
     setCheckedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-  // 全選択・解除
   const toggleSelectAll = () => {
-    if (checkedIds.size === notes.length) {
-      setCheckedIds(new Set());
-    } else {
-      setCheckedIds(new Set(notes.map(n => n.id)));
-    }
+    if (checkedIds.size === notes.length) setCheckedIds(new Set());
+    else setCheckedIds(new Set(notes.map(n => n.id)));
   };
 
   const handleInsertTimestamp = () => {
@@ -230,17 +223,53 @@ export default function Home() {
 
   return (
     <div className="container-fluid p-0 overflow-hidden">
+      <style jsx global>{`
+        .markdown-preview {
+          padding: 2rem;
+          height: 100%;
+          overflow-y: auto;
+          line-height: 1.6;
+        }
+        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 {
+          margin-top: 1.5rem;
+          margin-bottom: 1rem;
+          border-bottom: 1px solid var(--bs-border-color);
+          padding-bottom: 0.3rem;
+        }
+        .markdown-preview code {
+          background-color: var(--bs-tertiary-bg);
+          padding: 0.2rem 0.4rem;
+          border-radius: 4px;
+        }
+        .markdown-preview pre {
+          background-color: var(--bs-tertiary-bg);
+          padding: 1rem;
+          border-radius: 8px;
+        }
+        .markdown-preview blockquote {
+          border-left: 4px solid var(--bs-border-color);
+          padding-left: 1rem;
+          color: var(--bs-secondary-color);
+        }
+        .markdown-preview table {
+          width: 100%;
+          margin-bottom: 1rem;
+          border-collapse: collapse;
+        }
+        .markdown-preview th, .markdown-preview td {
+          border: 1px solid var(--bs-border-color);
+          padding: 0.5rem;
+        }
+        .view-mode-active {
+          background-color: var(--bs-primary) !important;
+          color: white !important;
+        }
+      `}</style>
       <div className="row g-0 vh-100">
         <div className="col-md-4 border-end d-flex flex-column h-100">
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
             <div className="d-flex align-items-center gap-3">
-              <input 
-                type="checkbox" 
-                className="form-check-input m-0" 
-                checked={notes.length > 0 && checkedIds.size === notes.length}
-                onChange={toggleSelectAll}
-                title="すべて選択/解除"
-              />
+              <input type="checkbox" className="form-check-input m-0" checked={notes.length > 0 && checkedIds.size === notes.length} onChange={toggleSelectAll} title="すべて選択/解除" />
               {checkedIds.size > 0 && (
                 <button className="btn btn-link text-danger p-0 border-0" onClick={handleBulkDelete} title="選択したメモを削除">
                   <i className="bi bi-trash-fill fs-5"></i>
@@ -252,14 +281,7 @@ export default function Home() {
             </button>
           </div>
           <div className="flex-grow-1 overflow-auto bg-body">
-            <NoteList 
-              notes={notes}
-              selectedNoteId={selectedNoteId}
-              checkedIds={checkedIds}
-              loading={loading}
-              onSelectNote={handleSelectNote}
-              onToggleCheck={toggleCheck}
-            />
+            <NoteList notes={notes} selectedNoteId={selectedNoteId} checkedIds={checkedIds} loading={loading} onSelectNote={handleSelectNote} onToggleCheck={toggleCheck} />
           </div>
           <div className="p-3 border-top bg-body-tertiary d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-center gap-2 overflow-hidden">
@@ -284,15 +306,27 @@ export default function Home() {
             </div>
             <div className="d-flex align-items-center gap-3">
               <div className="save-status">
-                {saveStatus === 'saving' && <small className="text-muted">保存中...</small>}
+                {saveStatus === 'saving' && <small className="text-muted animate-pulse">保存中...</small>}
                 {saveStatus === 'saved' && <small className="text-success fw-bold">✓ 保存済み</small>}
                 {saveStatus === 'error' && <small className="text-danger">⚠️ 失敗</small>}
+              </div>
+              <div className="d-flex gap-1 bg-secondary-subtle p-1 rounded">
+                {/* モード切り替えボタン群 */}
+                <button className={`btn btn-sm border-0 ${viewMode === 'source' ? 'view-mode-active' : ''}`} onClick={() => setViewMode('source')} title="ソースモード">
+                  <i className="bi bi-code-slash"></i>
+                </button>
+                <button className={`btn btn-sm border-0 ${viewMode === 'split' ? 'view-mode-active' : ''}`} onClick={() => setViewMode('split')} title="分割モード">
+                  <i className="bi bi-layout-split"></i>
+                </button>
+                <button className={`btn btn-sm border-0 ${viewMode === 'reading' ? 'view-mode-active' : ''}`} onClick={() => setViewMode('reading')} title="閲覧モード">
+                  <i className="bi bi-eye"></i>
+                </button>
               </div>
               <div className="d-flex gap-2">
                 <button className="btn btn-sm btn-outline-secondary border-0" onClick={toggleTheme} title="テーマ切り替え">
                   <i className={`bi bi-${theme === 'light' ? 'moon-fill' : 'sun-fill'}`}></i>
                 </button>
-                <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleInsertTimestamp} disabled={!selectedNoteId} title="タイムスタンプ挿入">
+                <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleInsertTimestamp} disabled={!selectedNoteId || viewMode === 'reading'} title="タイムスタンプ挿入">
                   <i className="bi bi-clock"></i>
                 </button>
                 <button className="btn btn-sm btn-outline-danger border-0" onClick={() => selectedNoteId && handleDeleteNote(selectedNoteId)} disabled={!selectedNoteId} title="削除">
@@ -301,15 +335,42 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <textarea
-            ref={textareaRef}
-            className="form-control border-0 flex-grow-1 p-4 fs-5 bg-body text-body"
-            placeholder="ここにメモを入力..."
-            style={{ resize: 'none', boxShadow: 'none', lineHeight: '1.6' }}
-            value={selectedNoteId !== null ? selectedNoteContent : ""}
-            onChange={(e) => setSelectedNoteContent(e.target.value)}
-            disabled={!selectedNoteId}
-          ></textarea>
+          
+          <div className="flex-grow-1 overflow-hidden d-flex">
+            {/* エディタ部分 (Source または Split モードで表示) */}
+            {(viewMode === 'source' || viewMode === 'split') && (
+              <textarea
+                ref={textareaRef}
+                className={`form-control border-0 p-4 fs-5 bg-body text-body ${viewMode === 'split' ? 'border-end' : ''}`}
+                placeholder="ここにメモを入力..."
+                style={{ resize: 'none', boxShadow: 'none', lineHeight: '1.6', width: viewMode === 'split' ? '50%' : '100%' }}
+                value={selectedNoteId !== null ? selectedNoteContent : ""}
+                onChange={(e) => setSelectedNoteContent(e.target.value)}
+                disabled={!selectedNoteId}
+              ></textarea>
+            )}
+            
+            {/* プレビュー部分 (Reading または Split モードで表示) */}
+            {(viewMode === 'reading' || viewMode === 'split') && (
+              <div 
+                className="markdown-preview bg-body text-body" 
+                style={{ width: viewMode === 'split' ? '50%' : '100%' }}
+              >
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm, remarkBreaks]} 
+                  rehypePlugins={[rehypeSanitize]}
+                  components={{
+                    // リンクタグ（a）の動作をカスタマイズ
+                    a: ({ node, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer" />
+                    ),
+                  }}
+                >
+                  {selectedNoteContent}
+                </ReactMarkdown>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

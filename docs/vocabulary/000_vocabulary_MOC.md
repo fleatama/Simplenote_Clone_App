@@ -10,6 +10,15 @@
 - [[hydration|hydration (HTMLの活性化)]]
 - [[environment_variable|environment variable (環境変数)]]
 - [[deployment|deployment (本番反映)]]
+- [[markdown|markdown (マークダウン記法)]]
+- [[parser|parser (解析プログラム)]]
+- [[sanitize|sanitize (無害化処理)]]
+- [[gfm|gfm (GitHub拡張マークダウン)]]
+- [[break|break (改行/中断)]]
+- [[interactive|interactive (対話的な/相互作用する)]]
+- [[mode|mode (様式/形態)]]
+- [[split|split (分割)]]
+- [[pane|pane (枠/領域)]]
 
 ## 認証・セキュリティ
 - [[auth|auth (認証と認可)]]
