@@ -375,11 +375,11 @@ export default function Home() {
                             if (React.isValidElement(child) && (child as any).props?.type === 'checkbox') {
                               return React.cloneElement(child as React.ReactElement, {
                                 onChange: () => line && toggleCheckboxAtLine(line),
+                                checked: (child as any).props.checked,
                                 disabled: false,
                                 style: { cursor: 'pointer' }
-                              });
-                            }
-                            return child;
+                              } as any); // 型エラー回避のため as any を使用
+                            }                            return child;
                           })}
                         </li>
                       );
