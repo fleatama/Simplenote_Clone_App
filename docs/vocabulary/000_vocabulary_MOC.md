@@ -28,6 +28,8 @@
 - [[map|map (マッピング/対応付け)]]
 - [[logic|logic (ロジック/処理手順)]]
 - [[robust|robust (ロバスト/堅牢な)]]
+- [[feature|feature (機能/新機能)]]
+- [[automation|automation (自動化)]]
 
 ## 認証・セキュリティ
 - [[auth|auth (認証と認可)]]
