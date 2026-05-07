@@ -1,14 +1,24 @@
 /**
- * Extracts title from note content.
- * Returns first 25 chars of the first line, with "..." if truncated.
+ * Extracts a cleaner title from note content.
+ * Handles Markdown headers and skips initial empty lines.
  */
 export const getNoteTitle = (content: string): string => {
   if (!content) return "";
-  const firstLine = content.trim().split("\n")[0];
-  if (firstLine.length > 25) {
-    return firstLine.substring(0, 25) + "...";
-  }
-  return firstLine;
+
+  // 全体の余白を除去して行ごとに分割
+  const lines = content.trim().split("\n");
+
+  // 空ではない最初の行を探す
+  let title = lines.find(line => line.trim() !== "") || "";
+
+  // Markdownの見出し記号 (例: "# ", "## ") を取り除く
+  title = title.replace(/^#+\s+/, "").trim();
+
+  // タイトルが空なら空文字を返す
+  if (!title) return "";
+
+  // 長すぎる場合は省略記号を付ける
+  return title.length > 30 ? title.substring(0, 30) + "..." : title;
 };
 
 /**

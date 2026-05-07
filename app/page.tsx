@@ -5,7 +5,6 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { getNoteTitle, formatDateTime } from "../utils/helpers";
 import NoteList from "./components/NoteList";
 import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 
@@ -16,7 +15,6 @@ interface Note {
   updatedAt: string;
 }
 
-// 表示モードの型定義
 type ViewMode = 'source' | 'split' | 'reading';
 
 export default function Home() {
@@ -31,13 +29,30 @@ export default function Home() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  
-  // Obsidian風の表示モード状態
   const [viewMode, setViewMode] = useState<ViewMode>('source');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // テーマ切り替え
+  // 特定の行のチェックボックスをトグルする関数 (1-based index)
+  const toggleCheckboxAtLine = (lineOneBased: number) => {
+    const lines = selectedNoteContent.split('\n');
+    const targetIdx = lineOneBased - 1; // 配列は0から始まるので -1 する
+
+    if (lines[targetIdx]) {
+      const line = lines[targetIdx];
+      // チェックボックスの反転処理
+      if (line.includes('[ ]')) {
+        lines[targetIdx] = line.replace('[ ]', '[x]');
+      } else if (line.includes('[x]')) {
+        lines[targetIdx] = line.replace('[x]', '[ ]');
+      } else if (line.includes('[X]')) {
+        lines[targetIdx] = line.replace('[X]', '[ ]');
+      }
+      
+      setSelectedNoteContent(lines.join('\n'));
+    }
+  };
+
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
@@ -53,7 +68,6 @@ export default function Home() {
     }
   }, []);
 
-  // メモを保存
   const handleSaveNote = async (noteId: string, content: string) => {
     setSaveStatus('saving');
     try {
@@ -75,7 +89,6 @@ export default function Home() {
     }
   };
 
-  // 新規メモ作成
   const handleCreateNewNote = async () => {
     try {
       const response = await fetch('/api/notes', {
@@ -87,7 +100,7 @@ export default function Home() {
       const newNote: Note = await response.json();
       setNotes(prevNotes => [newNote, ...prevNotes]);
       handleSelectNote(newNote);
-      setViewMode('source'); // 新規作成時は編集モードにする
+      setViewMode('source');
     } catch (err: any) {
       setError(err.message);
     }
@@ -98,7 +111,6 @@ export default function Home() {
     setSelectedNoteContent(note.content);
   };
 
-  // 個別削除
   const handleDeleteNote = async (noteId: string) => {
     if (!confirm('このメモを削除してもよろしいですか？')) return;
     try {
@@ -119,7 +131,6 @@ export default function Home() {
     }
   };
 
-  // 一括削除
   const handleBulkDelete = async () => {
     if (checkedIds.size === 0) return;
     if (!confirm(`${checkedIds.size} 件のメモを一括削除してもよろしいですか？`)) return;
@@ -311,7 +322,6 @@ export default function Home() {
                 {saveStatus === 'error' && <small className="text-danger">⚠️ 失敗</small>}
               </div>
               <div className="d-flex gap-1 bg-secondary-subtle p-1 rounded">
-                {/* モード切り替えボタン群 */}
                 <button className={`btn btn-sm border-0 ${viewMode === 'source' ? 'view-mode-active' : ''}`} onClick={() => setViewMode('source')} title="ソースモード">
                   <i className="bi bi-code-slash"></i>
                 </button>
@@ -337,7 +347,6 @@ export default function Home() {
           </div>
           
           <div className="flex-grow-1 overflow-hidden d-flex">
-            {/* エディタ部分 (Source または Split モードで表示) */}
             {(viewMode === 'source' || viewMode === 'split') && (
               <textarea
                 ref={textareaRef}
@@ -350,20 +359,31 @@ export default function Home() {
               ></textarea>
             )}
             
-            {/* プレビュー部分 (Reading または Split モードで表示) */}
             {(viewMode === 'reading' || viewMode === 'split') && (
-              <div 
-                className="markdown-preview bg-body text-body" 
-                style={{ width: viewMode === 'split' ? '50%' : '100%' }}
-              >
+              <div className="markdown-preview bg-body text-body" style={{ width: viewMode === 'split' ? '50%' : '100%' }}>
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm, remarkBreaks]} 
-                  rehypePlugins={[rehypeSanitize]}
                   components={{
-                    // リンクタグ（a）の動作をカスタマイズ
-                    a: ({ node, ...props }) => (
-                      <a {...props} target="_blank" rel="noopener noreferrer" />
-                    ),
+                    a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                    // li (リスト項目) コンポーネントをカスタムして行番号を取得
+                    li: ({ node, children, ...props }) => {
+                      const line = (node as any)?.position?.start.line;
+                      return (
+                        <li {...props}>
+                          {React.Children.map(children, child => {
+                            // 子要素の中にチェックボックス（input）があれば、行番号を渡す
+                            if (React.isValidElement(child) && (child as any).props?.type === 'checkbox') {
+                              return React.cloneElement(child as React.ReactElement, {
+                                onChange: () => line && toggleCheckboxAtLine(line),
+                                disabled: false,
+                                style: { cursor: 'pointer' }
+                              });
+                            }
+                            return child;
+                          })}
+                        </li>
+                      );
+                    }
                   }}
                 >
                   {selectedNoteContent}

@@ -19,6 +19,15 @@
 - [[mode|mode (様式/形態)]]
 - [[split|split (分割)]]
 - [[pane|pane (枠/領域)]]
+- [[index|index (インデックス/索引)]]
+- [[regex|regex (正規表現)]]
+- [[state|state (状態/ステート)]]
+- [[plugin|plugin (拡張機能)]]
+- [[renderer|renderer (描画処理)]]
+- [[source|source (ソース/元のデータ)]]
+- [[map|map (マッピング/対応付け)]]
+- [[logic|logic (ロジック/処理手順)]]
+- [[robust|robust (ロバスト/堅牢な)]]
 
 ## 認証・セキュリティ
 - [[auth|auth (認証と認可)]]
