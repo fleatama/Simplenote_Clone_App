@@ -1,11 +1,14 @@
-import { NextResponse } from 'next/server';
-import { Redis } from '@upstash/redis';
+import { NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
 import { auth } from "@/auth";
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
   token: process.env.KV_REST_API_TOKEN!,
 });
+
+// 以下の行を追加 2026-06-19 5:45追加
+console.log("DEBUG: Redis URL:", process.env.KV_REST_API_URL);
 
 const getUserKey = (userId: string) => `user:${userId}:notes`;
 
@@ -18,16 +21,20 @@ export async function GET() {
     }
 
     const userKey = getUserKey(session.user.id);
-    const allNotes: Record<string, any> = await redis.hgetall(userKey) || {};
-    
-    const notes = Object.values(allNotes).sort((a, b) => 
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    const allNotes: Record<string, any> = (await redis.hgetall(userKey)) || {};
+
+    const notes = Object.values(allNotes).sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
 
     return NextResponse.json(notes);
   } catch (error) {
-    console.error('Failed to read notes from DB:', error);
-    return NextResponse.json({ error: 'Failed to fetch notes' }, { status: 500 });
+    console.error("Failed to read notes from DB:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch notes" },
+      { status: 500 },
+    );
   }
 }
 
@@ -52,7 +59,7 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const newNote = {
       id: newId,
-      content: newNoteData.content || '',
+      content: newNoteData.content || "",
       createdAt: now,
       updatedAt: now,
     };
@@ -63,7 +70,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json(newNote, { status: 201 });
   } catch (error) {
-    console.error('DEBUG: Failed to create note:', error);
-    return NextResponse.json({ error: 'Failed to create note', details: String(error) }, { status: 500 });
+    console.error("DEBUG: Failed to create note:", error);
+    return NextResponse.json(
+      { error: "Failed to create note", details: String(error) },
+      { status: 500 },
+    );
   }
 }

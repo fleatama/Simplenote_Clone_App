@@ -53,6 +53,18 @@ export default function Home() {
     }
   };
 
+  // メモをMarkdownファイルとしてエクスポート
+  const handleExport = () => {
+    const blob = new Blob([selectedNoteContent], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const title = getNoteTitle(selectedNoteContent) || "untitled";
+    a.download = `${title}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
@@ -338,6 +350,9 @@ export default function Home() {
                 </button>
                 <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleInsertTimestamp} disabled={!selectedNoteId || viewMode === 'reading'} title="タイムスタンプ挿入">
                   <i className="bi bi-clock"></i>
+                </button>
+                <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleExport} disabled={!selectedNoteId} title="Markdownとしてエクスポート">
+                  <i className="bi bi-download"></i>
                 </button>
                 <button className="btn btn-sm btn-outline-danger border-0" onClick={() => selectedNoteId && handleDeleteNote(selectedNoteId)} disabled={!selectedNoteId} title="削除">
                   <i className="bi bi-trash"></i>
