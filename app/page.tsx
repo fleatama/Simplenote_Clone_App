@@ -7,57 +7,63 @@ import NoteList from "./components/NoteList";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import JSZip from "jszip"; // JSZip をインポート
+import { saveAs } from "file-saver"; // file-saver をインポート
 
-interface Note {
+export interface Note {
   id: string;
   content: string;
   createdAt: string;
   updatedAt: string;
 }
 
-type ViewMode = 'source' | 'split' | 'reading';
+type ViewMode = "source" | "split" | "reading";
 
 export default function Home() {
   const { data: session, status } = useSession();
-  
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-  const [selectedNoteContent, setSelectedNoteContent] = useState<string>('');
+  const [selectedNoteContent, setSelectedNoteContent] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(
+    null,
+  );
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<ViewMode>('source');
-  
+  const [viewMode, setViewMode] = useState<ViewMode>("source");
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 特定の行のチェックボックスをトグルする関数 (1-based index)
   const toggleCheckboxAtLine = (lineOneBased: number) => {
-    const lines = selectedNoteContent.split('\n');
+    const lines = selectedNoteContent.split("\\n");
     const targetIdx = lineOneBased - 1; // 配列は0から始まるので -1 する
 
     if (lines[targetIdx]) {
       const line = lines[targetIdx];
       // チェックボックスの反転処理
-      if (line.includes('[ ]')) {
-        lines[targetIdx] = line.replace('[ ]', '[x]');
-      } else if (line.includes('[x]')) {
-        lines[targetIdx] = line.replace('[x]', '[ ]');
-      } else if (line.includes('[X]')) {
-        lines[targetIdx] = line.replace('[X]', '[ ]');
+      if (line.includes("[ ]")) {
+        lines[targetIdx] = line.replace("[ ]", "[x]");
+      } else if (line.includes("[x]")) {
+        lines[targetIdx] = line.replace("[x]", "[ ]");
+      } else if (line.includes("[X]")) {
+        lines[targetIdx] = line.replace("[X]", "[ ]");
       }
-      
-      setSelectedNoteContent(lines.join('\n'));
+
+      setSelectedNoteContent(lines.join("\\n"));
     }
   };
 
-  // メモをMarkdownファイルとしてエクスポート
+  // メモをMarkdownファイルとしてエクスポート (既存の関数)
   const handleExport = () => {
-    const blob = new Blob([selectedNoteContent], { type: 'text/markdown' });
+    const blob = new Blob([selectedNoteContent], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     const title = getNoteTitle(selectedNoteContent) || "untitled";
     a.download = `${title}.md`;
@@ -65,54 +71,92 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  // 一括エクスポート機能 (新しく追加)
+  const handleBulkExport = async () => {
+    if (checkedIds.size === 0) return; // 何も選択されていない場合は何もしない
+
+    const zip = new JSZip();
+    let notesExportedCount = 0;
+
+    // 選択されているメモのみをZIPに追加
+    notes.forEach((note) => {
+      if (checkedIds.has(note.id)) {
+        const noteTitle = getNoteTitle(note.content) || `untitled_${note.id}`;
+        // ファイル名として安全な文字列にする（簡易的な処理）
+        const safeNoteTitle = noteTitle.replace(/[<>:"/\|?*]/g, "_");
+        zip.file(`${safeNoteTitle}.md`, note.content);
+        notesExportedCount++;
+      }
+    });
+
+    if (notesExportedCount === 0) {
+      setError("エクスポートするメモが選択されていません。");
+      return;
+    }
+
+    try {
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, "notes.zip"); // file-saver を使って保存
+    } catch (err: any) {
+      setError("一括エクスポートに失敗しました");
+      console.error("Bulk export error:", err);
+    }
+  };
+
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
+    const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
-    localStorage.setItem('simplenote-theme', newTheme);
-    document.documentElement.setAttribute('data-bs-theme', newTheme);
+    localStorage.setItem("simplenote-theme", newTheme);
+    document.documentElement.setAttribute("data-bs-theme", newTheme);
   };
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('simplenote-theme') as 'light' | 'dark';
+    const savedTheme = localStorage.getItem("simplenote-theme") as
+      | "light"
+      | "dark";
     if (savedTheme) {
       setTheme(savedTheme);
-      document.documentElement.setAttribute('data-bs-theme', savedTheme);
+      document.documentElement.setAttribute("data-bs-theme", savedTheme);
     }
   }, []);
 
   const handleSaveNote = async (noteId: string, content: string) => {
-    setSaveStatus('saving');
+    setSaveStatus("saving");
     try {
       const response = await fetch(`/api/notes/${noteId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
       const updatedNote: Note = await response.json();
-      setNotes(prevNotes =>
-        prevNotes.map(note => (note.id === updatedNote.id ? updatedNote : note))
+      setNotes((prevNotes) =>
+        prevNotes.map((note) =>
+          note.id === updatedNote.id ? updatedNote : note,
+        ),
       );
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (err: any) {
-      setSaveStatus('error');
+      setSaveStatus("error");
       setError(err.message);
     }
   };
 
   const handleCreateNewNote = async () => {
     try {
-      const response = await fetch('/api/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: '' }),
+      const response = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "" }), // JSON.stringify の typo を修正
       });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
       const newNote: Note = await response.json();
-      setNotes(prevNotes => [newNote, ...prevNotes]);
+      setNotes((prevNotes) => [newNote, ...prevNotes]);
       handleSelectNote(newNote);
-      setViewMode('source');
+      setViewMode("source");
     } catch (err: any) {
       setError(err.message);
     }
@@ -124,19 +168,21 @@ export default function Home() {
   };
 
   const handleDeleteNote = async (noteId: string) => {
-    if (!confirm('このメモを削除してもよろしいですか？')) return;
+    if (!confirm("このメモを削除してもよろしいですか？")) return;
     try {
-      const response = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('削除に失敗しました');
-      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
-      setCheckedIds(prev => {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("削除に失敗しました");
+      setNotes((prevNotes) => prevNotes.filter((note) => note.id !== noteId));
+      setCheckedIds((prev) => {
         const next = new Set(prev);
         next.delete(noteId);
         return next;
       });
       if (selectedNoteId === noteId) {
         setSelectedNoteId(null);
-        setSelectedNoteContent('');
+        setSelectedNoteContent("");
       }
     } catch (err: any) {
       setError(err.message);
@@ -145,23 +191,28 @@ export default function Home() {
 
   const handleBulkDelete = async () => {
     if (checkedIds.size === 0) return;
-    if (!confirm(`${checkedIds.size} 件のメモを一括削除してもよろしいですか？`)) return;
+    if (!confirm(`${checkedIds.size} 件のメモを一括削除してもよろしいですか？`))
+      return;
     try {
-      const deletePromises = Array.from(checkedIds).map(id => fetch(`/api/notes/${id}`, { method: 'DELETE' }));
+      const deletePromises = Array.from(checkedIds).map((id) =>
+        fetch(`/api/notes/${id}`, { method: "DELETE" }),
+      );
       await Promise.all(deletePromises);
-      setNotes(prevNotes => prevNotes.filter(note => !checkedIds.has(note.id)));
+      setNotes((prevNotes) =>
+        prevNotes.filter((note) => !checkedIds.has(note.id)),
+      );
       if (selectedNoteId && checkedIds.has(selectedNoteId)) {
         setSelectedNoteId(null);
-        setSelectedNoteContent('');
+        setSelectedNoteContent("");
       }
       setCheckedIds(new Set());
     } catch (err: any) {
-      setError('一括削除に失敗しました');
+      setError("一括削除に失敗しました");
     }
   };
 
   const toggleCheck = (id: string) => {
-    setCheckedIds(prev => {
+    setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -171,7 +222,7 @@ export default function Home() {
 
   const toggleSelectAll = () => {
     if (checkedIds.size === notes.length) setCheckedIds(new Set());
-    else setCheckedIds(new Set(notes.map(n => n.id)));
+    else setCheckedIds(new Set(notes.map((n) => n.id)));
   };
 
   const handleInsertTimestamp = () => {
@@ -180,11 +231,17 @@ export default function Home() {
     const cursorPosition = textarea.selectionStart;
     const now = new Date();
     const timestamp = now.toLocaleString();
-    const newContent = selectedNoteContent.substring(0, cursorPosition) + timestamp + selectedNoteContent.substring(cursorPosition);
+    const newContent =
+      selectedNoteContent.substring(0, cursorPosition) +
+      timestamp +
+      selectedNoteContent.substring(cursorPosition);
     setSelectedNoteContent(newContent);
     textarea.focus();
     setTimeout(() => {
-      textarea.setSelectionRange(cursorPosition + timestamp.length, cursorPosition + timestamp.length);
+      textarea.setSelectionRange(
+        cursorPosition + timestamp.length,
+        cursorPosition + timestamp.length,
+      );
     }, 0);
   };
 
@@ -192,8 +249,9 @@ export default function Home() {
     if (status === "authenticated") {
       const fetchNotes = async () => {
         try {
-          const response = await fetch('/api/notes');
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const response = await fetch("/api/notes");
+          if (!response.ok)
+            throw new Error(`HTTP error! status: ${response.status}`);
           const data: Note[] = await response.json();
           setNotes(data);
         } catch (err: any) {
@@ -211,7 +269,7 @@ export default function Home() {
       handleSelectNote(notes[0]);
     } else if (notes.length === 0) {
       setSelectedNoteId(null);
-      setSelectedNoteContent('');
+      setSelectedNoteContent("");
     }
   }, [notes, selectedNoteId]);
 
@@ -219,25 +277,37 @@ export default function Home() {
     if (!selectedNoteId) return;
     if (typingTimeout) clearTimeout(typingTimeout);
     const newTimeout = setTimeout(() => {
-      const originalNote = notes.find(n => n.id === selectedNoteId);
+      const originalNote = notes.find((n) => n.id === selectedNoteId);
       if (originalNote && originalNote.content !== selectedNoteContent) {
         handleSaveNote(selectedNoteId, selectedNoteContent);
       }
     }, 2000);
     setTypingTimeout(newTimeout);
-    return () => { if (newTimeout) clearTimeout(newTimeout); };
+    return () => {
+      if (newTimeout) clearTimeout(newTimeout);
+    };
   }, [selectedNoteContent, selectedNoteId]);
 
-  const selectedNote = notes.find(n => n.id === selectedNoteId);
+  const selectedNote = notes.find((n) => n.id === selectedNoteId);
 
-  if (status === "loading") return <div className="vh-100 d-flex justify-content-center align-items-center bg-body"><div className="spinner-border text-secondary" /></div>;
+  if (status === "loading")
+    return (
+      <div className="vh-100 d-flex justify-content-center align-items-center bg-body">
+        <div className="spinner-border text-secondary" />
+      </div>
+    );
 
   if (status === "unauthenticated") {
     return (
       <div className="vh-100 d-flex flex-column justify-content-center align-items-center bg-body">
         <h1 className="mb-4 fw-bold">Simplenote Clone</h1>
-        <p className="text-muted mb-4">書きたいときに、すぐに。シンプルで高速なメモアプリ。</p>
-        <button className="btn btn-primary btn-lg d-flex align-items-center gap-2" onClick={() => signIn("google")}>
+        <p className="text-muted mb-4">
+          書きたいときに、すぐに。シンプルで高速なメモアプリ。
+        </p>
+        <button
+          className="btn btn-primary btn-lg d-flex align-items-center gap-2"
+          onClick={() => signIn("google")}
+        >
           <i className="bi bi-google"></i> Googleでログイン
         </button>
       </div>
@@ -253,7 +323,9 @@ export default function Home() {
           overflow-y: auto;
           line-height: 1.6;
         }
-        .markdown-preview h1, .markdown-preview h2, .markdown-preview h3 {
+        .markdown-preview h1,
+        .markdown-preview h2,
+        .markdown-preview h3 {
           margin-top: 1.5rem;
           margin-bottom: 1rem;
           border-bottom: 1px solid var(--bs-border-color);
@@ -279,9 +351,31 @@ export default function Home() {
           margin-bottom: 1rem;
           border-collapse: collapse;
         }
-        .markdown-preview th, .markdown-preview td {
+        .markdown-preview th,
+        .markdown-preview td {
           border: 1px solid var(--bs-border-color);
           padding: 0.5rem;
+        }
+        .view-mode-active {
+          background-color: var(--bs-primary) !important;
+          color: white !important;
+        }
+        .save-status small {
+          font-size: 0.75rem;
+        }
+        .animate-pulse {
+          animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+          0% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+          100% {
+            opacity: 1;
+          }
         }
         .view-mode-active {
           background-color: var(--bs-primary) !important;
@@ -292,113 +386,221 @@ export default function Home() {
         <div className="col-md-4 border-end d-flex flex-column h-100">
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
             <div className="d-flex align-items-center gap-3">
-              <input type="checkbox" className="form-check-input m-0" checked={notes.length > 0 && checkedIds.size === notes.length} onChange={toggleSelectAll} title="すべて選択/解除" />
+              <input
+                type="checkbox"
+                className="form-check-input m-0"
+                checked={notes.length > 0 && checkedIds.size === notes.length}
+                onChange={toggleSelectAll}
+                title="すべて選択/解除"
+              />
               {checkedIds.size > 0 && (
-                <button className="btn btn-link text-danger p-0 border-0" onClick={handleBulkDelete} title="選択したメモを削除">
-                  <i className="bi bi-trash-fill fs-5"></i>
-                </button>
+                <>
+                  <button
+                    className="btn btn-link text-danger p-0 border-0"
+                    onClick={handleBulkDelete}
+                    title="選択したメモを削除"
+                  >
+                    <i className="bi bi-trash-fill fs-5"></i>
+                  </button>
+                  {/* 一括エクスポートボタンを追加 */}
+                  <button
+                    className="btn btn-link text-body p-0 border-0"
+                    onClick={handleBulkExport}
+                    disabled={checkedIds.size === 0} // 何か選択されている場合のみ有効
+                    title="選択したメモをエクスポート"
+                  >
+                    <i className="bi bi-download fs-5"></i>
+                  </button>
+                </>
               )}
             </div>
-            <button className="btn btn-link text-body p-0 border-0" onClick={handleCreateNewNote} title="新規作成">
+            <button
+              className="btn btn-link text-body p-0 border-0"
+              onClick={handleCreateNewNote}
+              title="新規作成"
+            >
               <i className="bi bi-pencil-square fs-5"></i>
             </button>
           </div>
           <div className="flex-grow-1 overflow-auto bg-body">
-            <NoteList notes={notes} selectedNoteId={selectedNoteId} checkedIds={checkedIds} loading={loading} onSelectNote={handleSelectNote} onToggleCheck={toggleCheck} />
+            <NoteList
+              notes={notes}
+              selectedNoteId={selectedNoteId}
+              checkedIds={checkedIds}
+              loading={loading}
+              onSelectNote={handleSelectNote}
+              onToggleCheck={toggleCheck}
+            />
           </div>
           <div className="p-3 border-top bg-body-tertiary d-flex justify-content-between align-items-center">
             <div className="d-flex align-items-center gap-2 overflow-hidden">
-              {session?.user?.image && <img src={session.user.image} width={24} height={24} className="rounded-circle" alt="User" />}
-              <small className="text-muted text-truncate">{session?.user?.name}</small>
+              {session?.user?.image && (
+                <img
+                  src={session.user.image}
+                  width={24}
+                  height={24}
+                  className="rounded-circle"
+                  alt="User"
+                />
+              )}
+              <small className="text-muted text-truncate">
+                {session?.user?.name}
+              </small>
             </div>
-            <button className="btn btn-sm btn-link text-muted p-0 border-0" onClick={() => signOut()} title="ログアウト">
+            <button
+              className="btn btn-sm btn-link text-muted p-0 border-0"
+              onClick={() => signOut()}
+              title="ログアウト"
+            >
               <i className="bi bi-box-arrow-right fs-5"></i>
             </button>
           </div>
         </div>
 
         <div className="col-md-8 d-flex flex-column h-100 bg-body">
-          <div className="px-4 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: '57px' }}>
-            <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+          <div
+            className="px-4 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary"
+            style={{ minHeight: "57px" }}
+          >
+            <div className="text-muted" style={{ fontSize: "0.75rem" }}>
               {selectedNote && (
                 <>
-                  <span className="me-3">作成: {formatDateTime(selectedNote.createdAt)}</span>
+                  <span className="me-3">
+                    作成: {formatDateTime(selectedNote.createdAt)}
+                  </span>
                   <span>更新: {formatDateTime(selectedNote.updatedAt)}</span>
                 </>
               )}
             </div>
             <div className="d-flex align-items-center gap-3">
               <div className="save-status">
-                {saveStatus === 'saving' && <small className="text-muted animate-pulse">保存中...</small>}
-                {saveStatus === 'saved' && <small className="text-success fw-bold">✓ 保存済み</small>}
-                {saveStatus === 'error' && <small className="text-danger">⚠️ 失敗</small>}
+                {saveStatus === "saving" && (
+                  <small className="text-muted animate-pulse">保存中...</small>
+                )}
+                {saveStatus === "saved" && (
+                  <small className="text-success fw-bold">✓ 保存済み</small>
+                )}
+                {saveStatus === "error" && (
+                  <small className="text-danger">⚠️ 失敗</small>
+                )}
               </div>
               <div className="d-flex gap-1 bg-secondary-subtle p-1 rounded">
-                <button className={`btn btn-sm border-0 ${viewMode === 'source' ? 'view-mode-active' : ''}`} onClick={() => setViewMode('source')} title="ソースモード">
+                <button
+                  className={`btn btn-sm border-0 ${viewMode === "source" ? "view-mode-active" : ""}`}
+                  onClick={() => setViewMode("source")}
+                  title="ソースモード"
+                >
                   <i className="bi bi-code-slash"></i>
                 </button>
-                <button className={`btn btn-sm border-0 ${viewMode === 'split' ? 'view-mode-active' : ''}`} onClick={() => setViewMode('split')} title="分割モード">
+                <button
+                  className={`btn btn-sm border-0 ${viewMode === "split" ? "view-mode-active" : ""}`}
+                  onClick={() => setViewMode("split")}
+                  title="分割モード"
+                >
                   <i className="bi bi-layout-split"></i>
                 </button>
-                <button className={`btn btn-sm border-0 ${viewMode === 'reading' ? 'view-mode-active' : ''}`} onClick={() => setViewMode('reading')} title="閲覧モード">
+                <button
+                  className={`btn btn-sm border-0 ${viewMode === "reading" ? "view-mode-active" : ""}`}
+                  onClick={() => setViewMode("reading")}
+                  title="閲覧モード"
+                >
                   <i className="bi bi-eye"></i>
                 </button>
               </div>
               <div className="d-flex gap-2">
-                <button className="btn btn-sm btn-outline-secondary border-0" onClick={toggleTheme} title="テーマ切り替え">
-                  <i className={`bi bi-${theme === 'light' ? 'moon-fill' : 'sun-fill'}`}></i>
+                <button
+                  className="btn btn-sm btn-outline-secondary border-0"
+                  onClick={toggleTheme}
+                  title="テーマ切り替え"
+                >
+                  <i
+                    className={`bi bi-${theme === "light" ? "moon-fill" : "sun-fill"}`}
+                  ></i>
                 </button>
-                <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleInsertTimestamp} disabled={!selectedNoteId || viewMode === 'reading'} title="タイムスタンプ挿入">
+                <button
+                  className="btn btn-sm btn-outline-secondary border-0"
+                  onClick={handleInsertTimestamp}
+                  disabled={!selectedNoteId || viewMode === "reading"}
+                  title="タイムスタンプ挿入"
+                >
                   <i className="bi bi-clock"></i>
                 </button>
-                <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleExport} disabled={!selectedNoteId} title="Markdownとしてエクスポート">
+                <button
+                  className="btn btn-sm btn-outline-secondary border-0"
+                  onClick={handleExport}
+                  disabled={!selectedNoteId}
+                  title="Markdownとしてエクスポート"
+                >
                   <i className="bi bi-download"></i>
                 </button>
-                <button className="btn btn-sm btn-outline-danger border-0" onClick={() => selectedNoteId && handleDeleteNote(selectedNoteId)} disabled={!selectedNoteId} title="削除">
+                <button
+                  className="btn btn-sm btn-outline-danger border-0"
+                  onClick={() =>
+                    selectedNoteId && handleDeleteNote(selectedNoteId)
+                  }
+                  disabled={!selectedNoteId}
+                  title="削除"
+                >
                   <i className="bi bi-trash"></i>
                 </button>
               </div>
             </div>
           </div>
-          
+
           <div className="flex-grow-1 overflow-hidden d-flex">
-            {(viewMode === 'source' || viewMode === 'split') && (
+            {(viewMode === "source" || viewMode === "split") && (
               <textarea
                 ref={textareaRef}
-                className={`form-control border-0 p-4 fs-5 bg-body text-body ${viewMode === 'split' ? 'border-end' : ''}`}
+                className={`form-control border-0 p-4 fs-5 bg-body text-body ${viewMode === "split" ? "border-end" : ""}`}
                 placeholder="ここにメモを入力..."
-                style={{ resize: 'none', boxShadow: 'none', lineHeight: '1.6', width: viewMode === 'split' ? '50%' : '100%' }}
+                style={{
+                  resize: "none",
+                  boxShadow: "none",
+                  lineHeight: "1.6",
+                  width: viewMode === "split" ? "50%" : "100%",
+                }}
                 value={selectedNoteId !== null ? selectedNoteContent : ""}
                 onChange={(e) => setSelectedNoteContent(e.target.value)}
                 disabled={!selectedNoteId}
               ></textarea>
             )}
-            
-            {(viewMode === 'reading' || viewMode === 'split') && (
-              <div className="markdown-preview bg-body text-body" style={{ width: viewMode === 'split' ? '50%' : '100%' }}>
-                <ReactMarkdown 
-                  remarkPlugins={[remarkGfm, remarkBreaks]} 
+
+            {(viewMode === "reading" || viewMode === "split") && (
+              <div
+                className="markdown-preview bg-body text-body"
+                style={{ width: viewMode === "split" ? "50%" : "100%" }}
+              >
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkBreaks]}
                   components={{
-                    a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-                    // li (リスト項目) コンポーネントをカスタムして行番号を取得
+                    a: ({ node, ...props }) => (
+                      <a {...props} target="_blank" rel="noopener noreferrer" />
+                    ),
                     li: ({ node, children, ...props }) => {
                       const line = (node as any)?.position?.start.line;
                       return (
                         <li {...props}>
-                          {React.Children.map(children, child => {
-                            // 子要素の中にチェックボックス（input）があれば、行番号を渡す
-                            if (React.isValidElement(child) && (child as any).props?.type === 'checkbox') {
-                              return React.cloneElement(child as React.ReactElement, {
-                                onChange: () => line && toggleCheckboxAtLine(line),
-                                checked: (child as any).props.checked,
-                                disabled: false,
-                                style: { cursor: 'pointer' }
-                              } as any); // 型エラー回避のため as any を使用
-                            }                            return child;
+                          {React.Children.map(children, (child) => {
+                            if (
+                              React.isValidElement(child) &&
+                              (child as any).props?.type === "checkbox"
+                            ) {
+                              return React.cloneElement(
+                                child as React.ReactElement,
+                                {
+                                  onChange: () =>
+                                    line && toggleCheckboxAtLine(line),
+                                  checked: (child as any).props.checked,
+                                  disabled: false,
+                                  style: { cursor: "pointer" },
+                                } as any,
+                              ); // 型エラー回避のため as any を使用
+                            }
+                            return child;
                           })}
                         </li>
                       );
-                    }
+                    },
                   }}
                 >
                   {selectedNoteContent}

@@ -1,3 +1,5 @@
+import { Note } from "../app/page"; // 修正: Note インターフェースのインポートが必要です
+
 /**
  * Extracts a cleaner title from note content.
  * Handles Markdown headers and skips initial empty lines.
@@ -9,7 +11,7 @@ export const getNoteTitle = (content: string): string => {
   const lines = content.trim().split("\n");
 
   // 空ではない最初の行を探す
-  let title = lines.find(line => line.trim() !== "") || "";
+  let title = lines.find((line) => line.trim() !== "") || "";
 
   // Markdownの見出し記号 (例: "# ", "## ") を取り除く
   title = title.replace(/^#+\s+/, "").trim();
@@ -21,14 +23,36 @@ export const getNoteTitle = (content: string): string => {
   return title.length > 30 ? title.substring(0, 30) + "..." : title;
 };
 
+// フロントマター生成用の関数
+export const generateFrontMatter = (note: Note): string => {
+  const { createdAt, updatedAt, content } = note;
+  const title = getNoteTitle(content) || "Untitled";
+
+  // 日付を YYYY-MM-DD 形式に変換
+  const createdDate = new Date(createdAt).toISOString().split("T")[0];
+  const updatedDate = new Date(updatedAt).toISOString().split("T")[0];
+
+  // フロントマター生成
+  return `---
+created: ${createdDate}
+updated: ${updatedDate}
+tags: []
+aliases: ["${title.replace(/"/g, '\\"')}"]
+---
+`;
+};
+
 /**
  * Converts ISO date string to a locale string.
  */
 export const formatDateTime = (isoString: string): string => {
   if (!isoString) return "";
   const date = new Date(isoString);
-  return date.toLocaleString("ja-JP", { 
-    year: "numeric", month: "2-digit", day: "2-digit", 
-    hour: "2-digit", minute: "2-digit" 
+  return date.toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
