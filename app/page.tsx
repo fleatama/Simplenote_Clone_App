@@ -298,6 +298,14 @@ export default function Home() {
           <div className="px-4 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px" }}>
             <div className="d-flex align-items-center gap-3">
               <button className={`btn btn-sm border-0 ${showMetadata ? "view-mode-active" : "btn-outline-secondary"}`} onClick={() => setShowMetadata(!showMetadata)}><i className="bi bi-tag"></i></button>
+              
+              {/* 3モード切り替えボタン */}
+              <div className="d-flex gap-1 bg-secondary-subtle p-1 rounded">
+                <button className={`btn btn-sm border-0 ${viewMode === "source" ? "view-mode-active" : ""}`} onClick={() => setViewMode("source")} title="ソースモード"><i className="bi bi-code-slash"></i></button>
+                <button className={`btn btn-sm border-0 ${viewMode === "split" ? "view-mode-active" : ""}`} onClick={() => setViewMode("split")} title="分割モード"><i className="bi bi-layout-split"></i></button>
+                <button className={`btn btn-sm border-0 ${viewMode === "reading" ? "view-mode-active" : ""}`} onClick={() => setViewMode("reading")} title="閲覧モード"><i className="bi bi-eye"></i></button>
+              </div>
+
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={toggleTheme}><i className={`bi bi-${theme === "light" ? "moon-fill" : "sun-fill"}`}></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleInsertTimestamp} disabled={!selectedNoteId || viewMode === 'reading'}><i className="bi bi-clock"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleExport} disabled={!selectedNoteId}><i className="bi bi-download"></i></button>
@@ -319,8 +327,8 @@ export default function Home() {
                 note={selectedNote}
                 onUpdate={(u) => {
                   const frontMatter = generateFrontMatter(u);
-                  const cleanContent = u.content.replace(/^---[\s\S]*?---\n*/, '');
-                  const newContent = frontMatter + cleanContent;
+                  const cleanContent = u.content.replace(/^---[\s\S]*?---\s*/, '').trim();
+                  const newContent = `${frontMatter}\n${cleanContent}`;
                   const finalNote = { ...u, content: newContent };
                   setNotes((prev) => prev.map((n) => (n.id === finalNote.id ? finalNote : n)));
                   setSelectedNoteContent(newContent);

@@ -25,8 +25,9 @@ export const getNoteTitle = (content: string): string => {
 
 // フロントマター生成用の関数
 export const generateFrontMatter = (note: Note): string => {
-  const { createdAt, updatedAt, content } = note;
-  const title = getNoteTitle(content) || "Untitled";
+  const { createdAt, updatedAt, metadata } = note;
+  const tags = metadata?.tags || [];
+  const aliases = metadata?.aliases || [];
 
   // 日付を YYYY-MM-DD 形式に変換
   const createdDate = new Date(createdAt).toISOString().split("T")[0];
@@ -36,8 +37,8 @@ export const generateFrontMatter = (note: Note): string => {
   return `---
 created: ${createdDate}
 updated: ${updatedDate}
-tags: []
-aliases: ["${title.replace(/"/g, '\\"')}"]
+tags: [${tags.join(", ")}]
+aliases: [${aliases.join(", ")}]
 ---
 `;
 };
