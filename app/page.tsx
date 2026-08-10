@@ -52,18 +52,6 @@ export default function Home() {
     setActiveTag(tag === activeTag ? null : tag);
   };
 
-  const toggleCheckboxAtLine = (lineOneBased: number) => {
-    const lines = selectedNoteContent.split("\n");
-    const targetIdx = lineOneBased - 1;
-    if (lines[targetIdx]) {
-      const line = lines[targetIdx];
-      if (line.includes("[ ]")) lines[targetIdx] = line.replace("[ ]", "[x]");
-      else if (line.includes("[x]")) lines[targetIdx] = line.replace("[x]", "[ ]");
-      else if (line.includes("[X]")) lines[targetIdx] = line.replace("[X]", "[ ]");
-      setSelectedNoteContent(lines.join("\n"));
-    }
-  };
-
   const handleExport = () => {
     const note = notes.find(n => n.id === selectedNoteId);
     if (!note) return;
@@ -92,9 +80,7 @@ export default function Home() {
     try {
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "notes.zip");
-    } catch (err: any) {
-      setError("一括エクスポートに失敗しました");
-    }
+    } catch (err: any) { setError("一括エクスポート失敗"); }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,10 +144,7 @@ export default function Home() {
       setNotes((prev) => prev.map((n) => (n.id === updatedNote.id ? updatedNote : n)));
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (err: any) {
-      setSaveStatus("error");
-      setError(err.message);
-    }
+    } catch (err: any) { setSaveStatus("error"); setError(err.message); }
   };
 
   const handleCreateNewNote = async () => {
@@ -244,19 +227,13 @@ export default function Home() {
 
   useEffect(() => {
     if (!selectedNoteId) return;
-    
-    // 本文からフロントマターを抽出してメタデータを同期する
-    const { data } = matter(selectedNoteContent);
-    const parsedMetadata = {
-      tags: Array.isArray(data.tags) ? data.tags : [],
-      aliases: Array.isArray(data.aliases) ? data.aliases : [],
-    };
-
-    // メタデータに変更がある場合のみ更新してループを防ぐ
-    const currentNote = notes.find(n => n.id === selectedNoteId);
-    if (currentNote && JSON.stringify(currentNote.metadata) !== JSON.stringify(parsedMetadata)) {
-      setNotes(prev => prev.map(n => n.id === selectedNoteId ? { ...n, metadata: parsedMetadata } : n));
-    }
+    if (typingTimeout) clearTimeout(typingTimeout);
+    const id = setTimeout(() => {
+      const note = notes.find(n => n.id === selectedNoteId);
+      if (note && note.content !== selectedNoteContent) handleSaveNote(selectedNoteId, selectedNoteContent, note.metadata);
+    }, 2000);
+    setTypingTimeout(id);
+    return () => clearTimeout(id);
   }, [selectedNoteContent, selectedNoteId]);
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
@@ -266,8 +243,12 @@ export default function Home() {
   if (status === "unauthenticated") return <div className="vh-100 d-flex flex-column justify-content-center align-items-center"><h1 className="mb-4">Simplenote Clone</h1><button className="btn btn-primary" onClick={() => signIn("google")}>Googleでログイン</button></div>;
 
   return (
-    <div className="container-fluid p-0 overflow-hidden">
-      <div className="row g-0 vh-100">
+    <div className="container-fluid p-0 overflow-hidden vh-100 d-flex flex-column">
+      <style jsx global>{`
+        .markdown-preview { padding: 2rem; overflow-y: auto; height: 100%; flex-grow: 1; line-height: 1.6; }
+        .view-mode-active { background-color: var(--bs-primary) !important; color: white !important; }
+      `}</style>
+      <div className="row g-0 flex-grow-1">
         <div className="col-md-4 border-end d-flex flex-column h-100">
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
             <div className="d-flex align-items-center gap-3">
@@ -298,14 +279,6 @@ export default function Home() {
           <div className="px-4 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px" }}>
             <div className="d-flex align-items-center gap-3">
               <button className={`btn btn-sm border-0 ${showMetadata ? "view-mode-active" : "btn-outline-secondary"}`} onClick={() => setShowMetadata(!showMetadata)}><i className="bi bi-tag"></i></button>
-              
-              {/* 3モード切り替えボタン */}
-              <div className="d-flex gap-1 bg-secondary-subtle p-1 rounded">
-                <button className={`btn btn-sm border-0 ${viewMode === "source" ? "view-mode-active" : ""}`} onClick={() => setViewMode("source")} title="ソースモード"><i className="bi bi-code-slash"></i></button>
-                <button className={`btn btn-sm border-0 ${viewMode === "split" ? "view-mode-active" : ""}`} onClick={() => setViewMode("split")} title="分割モード"><i className="bi bi-layout-split"></i></button>
-                <button className={`btn btn-sm border-0 ${viewMode === "reading" ? "view-mode-active" : ""}`} onClick={() => setViewMode("reading")} title="閲覧モード"><i className="bi bi-eye"></i></button>
-              </div>
-
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={toggleTheme}><i className={`bi bi-${theme === "light" ? "moon-fill" : "sun-fill"}`}></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleInsertTimestamp} disabled={!selectedNoteId || viewMode === 'reading'}><i className="bi bi-clock"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleExport} disabled={!selectedNoteId}><i className="bi bi-download"></i></button>
