@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       content: newNoteData.content || "",
       createdAt: now,
       updatedAt: now,
+      metadata: newNoteData.metadata || { tags: [], aliases: [] },
     };
 
     console.log("DEBUG: Attempting to save to Redis key:", userKey);

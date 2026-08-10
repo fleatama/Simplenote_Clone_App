@@ -29,15 +29,19 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
 
+    const parsedExistingNote = typeof existingNote === 'string' ? JSON.parse(existingNote) : existingNote;
+
     const now = new Date().toISOString();
     const updatedNote = {
-      ...existingNote,
+      ...parsedExistingNote,
       ...updatedNoteData,
       updatedAt: now,
       id: id,
+      metadata: updatedNoteData.metadata || parsedExistingNote.metadata || { tags: [], aliases: [] },
     };
 
-    await redis.hset(userKey, { [id]: updatedNote });
+    // Redisに保存 (JSON文字列として保存)
+    await redis.hset(userKey, { [id]: JSON.stringify(updatedNote) });
 
     return NextResponse.json(updatedNote);
   } catch (error) {
