@@ -244,13 +244,19 @@ export default function Home() {
 
   useEffect(() => {
     if (!selectedNoteId) return;
-    if (typingTimeout) clearTimeout(typingTimeout);
-    const id = setTimeout(() => {
-      const note = notes.find(n => n.id === selectedNoteId);
-      if (note && note.content !== selectedNoteContent) handleSaveNote(selectedNoteId, selectedNoteContent, note.metadata);
-    }, 2000);
-    setTypingTimeout(id);
-    return () => clearTimeout(id);
+    
+    // 本文からフロントマターを抽出してメタデータを同期する
+    const { data } = matter(selectedNoteContent);
+    const parsedMetadata = {
+      tags: Array.isArray(data.tags) ? data.tags : [],
+      aliases: Array.isArray(data.aliases) ? data.aliases : [],
+    };
+
+    // メタデータに変更がある場合のみ更新してループを防ぐ
+    const currentNote = notes.find(n => n.id === selectedNoteId);
+    if (currentNote && JSON.stringify(currentNote.metadata) !== JSON.stringify(parsedMetadata)) {
+      setNotes(prev => prev.map(n => n.id === selectedNoteId ? { ...n, metadata: parsedMetadata } : n));
+    }
   }, [selectedNoteContent, selectedNoteId]);
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
