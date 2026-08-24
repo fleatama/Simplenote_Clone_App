@@ -44,6 +44,44 @@ aliases: [${aliases.join(", ")}]
 };
 
 /**
+ * フロントマター（--- で囲まれた部分）およびそれに付随する
+ * タグ編集バグで蓄積したゴミ（「]」や孤立した「---」など）を完全に一掃し、
+ * 純粋な本文のみを抽出する堅牢な関数。
+ */
+export const stripFrontMatter = (content: string): string => {
+  if (!content) return "";
+
+  // 文字列全体の先頭の空白を除去
+  let current = content.trim();
+
+  // 蓄積したゴミ（「]」や「---」などの重複）を再帰的・ループ的にクリーンアップする
+  let previous = "";
+  while (current !== previous) {
+    previous = current;
+
+    // もし先頭が「]」で始まっていたら除去（バグで取り残された閉じブラケット）
+    if (current.startsWith("]")) {
+      current = current.substring(1).trim();
+      continue;
+    }
+
+    // 正しいフロントマター、もしくは浮いた「---」をクリーンアップ
+    if (current.startsWith("---")) {
+      const nextDashesIndex = current.indexOf("---", 3);
+      if (nextDashesIndex !== -1) {
+        // 2番目の "---" の直後から本文を抽出
+        current = current.substring(nextDashesIndex + 3).trim();
+      } else {
+        // 閉じられていない浮いた "---" はバグのゴミなので除去
+        current = current.substring(3).trim();
+      }
+    }
+  }
+
+  return current;
+};
+
+/**
  * Converts ISO date string to a locale string.
  */
 export const formatDateTime = (isoString: string): string => {
