@@ -439,6 +439,13 @@ export default function Home() {
               <div>
                 <div>{session?.user?.name || "ユーザー"}</div>
                 <div style={{ fontSize: '0.75rem' }}>{session?.user?.email || "未ログイン"}</div>
+                <button 
+                  className="btn btn-sm btn-link text-danger p-0 mt-1" 
+                  style={{ fontSize: '0.75rem' }}
+                  onClick={() => signOut()}
+                >
+                  ログアウト
+                </button>
               </div>
             </div>
             <div className="d-flex align-items-center gap-3">
