@@ -431,11 +431,15 @@ export default function Home() {
       <div className="row g-0 flex-grow-1 overflow-hidden">
         <div className="col-md-4 border-end d-flex flex-column h-100">
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
-            {/* デバッグ用：ユーザーID、メールアドレス、シークレット確認 */}
-            <div className="small text-muted mb-2">
-              ID: {session?.user?.id || "未ログイン"}<br />
-              Email: {session?.user?.email || "不明"}<br />
-              Secret Check: {process.env.AUTH_SECRET ? "OK" : "MISSING"}
+            {/* ログインユーザー情報表示 */}
+            <div className="small text-muted mb-2 d-flex align-items-center gap-2">
+              {session?.user?.image && (
+                <img src={session.user.image} alt="User" className="rounded-circle" style={{ width: '24px', height: '24px' }} />
+              )}
+              <div>
+                <div>{session?.user?.name || "ユーザー"}</div>
+                <div style={{ fontSize: '0.75rem' }}>{session?.user?.email || "未ログイン"}</div>
+              </div>
             </div>
             <div className="d-flex align-items-center gap-3">
               {activeTag ? (
