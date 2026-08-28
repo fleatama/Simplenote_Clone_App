@@ -28,9 +28,11 @@
 - [[map|map (マッピング/対応付け)]]
 - [[logic|logic (ロジック/処理手順)]]
 - [[robust|robust (ロバスト/堅牢な)]]
-- [[feature|feature (機能/新機能)]]
 - [[automation|automation (自動化)]]
 - [[blob|blob (データの塊/バイナリデータ)]]
+- [[pkce|PKCE (Proof Key for Code Exchange: 認証コードの横取りを防ぐセキュリティ拡張)]]
+- [[moc|MOC (Map of Content: 情報の目次)]]
+- [[middleware|middleware (リクエストとレスポンスの中間処理)]]
 
 ## 認証・セキュリティ
 - [[auth|auth (認証と認可)]]
@@ -47,6 +49,7 @@
 - [[test|test (テスト)]]
 - [[unit_test|unit test (単体テスト)]]
 - [[assertion|assertion (期待値の確認)]]
+- [[fast-forward|fast-forward (ブランチを一直線に繋ぐマージ方法)]]
 
 ## React
 - [[component|component (部品)]]

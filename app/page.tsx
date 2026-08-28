@@ -431,6 +431,12 @@ export default function Home() {
       <div className="row g-0 flex-grow-1 overflow-hidden">
         <div className="col-md-4 border-end d-flex flex-column h-100">
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
+            {/* デバッグ用：ユーザーID、メールアドレス、シークレット確認 */}
+            <div className="small text-muted mb-2">
+              ID: {session?.user?.id || "未ログイン"}<br />
+              Email: {session?.user?.email || "不明"}<br />
+              Secret Check: {process.env.AUTH_SECRET ? "OK" : "MISSING"}
+            </div>
             <div className="d-flex align-items-center gap-3">
               {activeTag ? (
                 <div className="badge bg-primary rounded-pill d-flex align-items-center gap-1">#{activeTag}<button className="btn-close btn-close-white ms-1" style={{ fontSize: '0.5rem' }} onClick={() => setActiveTag(null)}></button></div>
