@@ -490,17 +490,18 @@ export default function Home() {
 
         {/* 右側：エディタ・プレビュー (スマホではノート未選択時に非表示) */}
         <div className={`col-md-8 d-flex flex-column h-100 bg-body ${selectedNoteId ? 'd-flex' : 'd-none d-md-flex'}`}>
-          <div className="px-4 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px" }}>
-            <div className="d-flex align-items-center gap-3">
-              {/* スマホ画面で一覧に戻るボタン */}
+          <div className="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px" }}>
+            <div className="d-flex align-items-center gap-2">
+              {/* スマホ画面で一覧に戻るボタン（ラベル付きで分かりやすく） */}
               <button 
-                className="btn btn-sm btn-outline-secondary border-0 d-md-none" 
+                className="btn btn-sm btn-outline-primary d-md-none d-flex align-items-center gap-1 px-2 py-1" 
                 onClick={() => setSelectedNoteId(null)}
                 title="一覧に戻る"
               >
-                <i className="bi bi-arrow-left fs-5"></i>
+                <i className="bi bi-chevron-left"></i>
+                <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>一覧へ</span>
               </button>
-              <button className={`btn btn-sm border-0 ${showMetadata ? "view-mode-active" : "btn-outline-secondary"}`} onClick={() => setShowMetadata(!showMetadata)}><i className="bi bi-tag"></i></button>
+              <button className={`btn btn-sm border-0 ${showMetadata ? "view-mode-active" : "btn-outline-secondary"}`} onClick={() => setShowMetadata(!showMetadata)} title="メタデータ"><i className="bi bi-tag"></i></button>
               <div className="d-flex gap-1 bg-secondary-subtle p-1 rounded">
                 <button className={`btn btn-sm border-0 ${viewMode === "source" ? "view-mode-active" : ""}`} onClick={() => setViewMode("source")} title="ソースモード"><i className="bi bi-code-slash"></i></button>
                 <button className={`btn btn-sm border-0 ${viewMode === "split" ? "view-mode-active" : ""}`} onClick={() => setViewMode("split")} title="分割モード"><i className="bi bi-layout-split"></i></button>
