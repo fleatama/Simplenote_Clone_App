@@ -405,8 +405,14 @@ export default function Home() {
   if (status === "unauthenticated") return <div className="vh-100 d-flex flex-column justify-content-center align-items-center"><h1 className="mb-4">Simplenote Clone</h1><button className="btn btn-primary" onClick={() => signIn("google")}>Googleでログイン</button></div>;
 
   return (
-    <div className="container-fluid p-0 overflow-hidden vh-100 d-flex flex-column">
+    <div className="container-fluid p-0 overflow-hidden d-flex flex-column" style={{ height: "100dvh" }}>
       <style jsx global>{`
+        html, body {
+          height: 100%;
+          overflow: hidden;
+          margin: 0;
+          padding: 0;
+        }
         .markdown-preview { padding: 2.5rem; overflow-y: auto; flex: 1; min-height: 0; line-height: 1.7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         .markdown-preview h1 { font-size: 1.8rem; font-weight: 700; margin-top: 0; margin-bottom: 1.25rem; border-bottom: 2px solid var(--bs-border-color); padding-bottom: 0.5rem; }
         .markdown-preview h2 { font-size: 1.45rem; font-weight: 600; margin-top: 1.75rem; margin-bottom: 0.85rem; border-bottom: 1px solid var(--bs-border-color-translucent); padding-bottom: 0.3rem; }
@@ -526,7 +532,7 @@ export default function Home() {
           
           {/* マークダウン編集ツールバー */}
           {(viewMode === "source" || viewMode === "split") && selectedNoteId && (
-            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap sticky-top" style={{ zIndex: 10 }}>
+            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap" style={{ zIndex: 10, flexShrink: 0 }}>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleUndo} title="元に戻す"><i className="bi bi-arrow-counterclockwise"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleRedo} title="やり直す"><i className="bi bi-arrow-clockwise"></i></button>
               <div className="vr mx-1"></div>
@@ -550,17 +556,18 @@ export default function Home() {
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("codeblock", "", "block")} title="コードブロック"><i className="bi bi-terminal"></i></button>
             </div>
           )}
-          <div className="flex-grow-1 overflow-hidden d-flex">
+          <div className="flex-grow-1 overflow-hidden d-flex position-relative">
             {(viewMode === "source" || viewMode === "split") && (
-              <textarea ref={textareaRef} className="form-control border-0 p-4 fs-5 bg-body text-body note-textarea" style={{ resize: "none", width: viewMode === "split" ? "50%" : "100%", overflowY: "auto" }} value={selectedNoteId !== null ? selectedNoteContent : ""} onChange={(e) => setSelectedNoteContent(e.target.value)} disabled={!selectedNoteId} placeholder="ここに入力するか、マークダウンツールバーを使用してください..."></textarea>
+              <textarea ref={textareaRef} className="form-control border-0 p-4 fs-5 bg-body text-body note-textarea" style={{ resize: "none", width: viewMode === "split" ? "50%" : "100%", overflowY: "auto", height: "100%", position: "absolute", top: 0, left: 0 }} value={selectedNoteId !== null ? selectedNoteContent : ""} onChange={(e) => setSelectedNoteContent(e.target.value)} disabled={!selectedNoteId} placeholder="ここに入力するか、マークダウンツールバーを使用してください..."></textarea>
             )}
             {(viewMode === "reading" || viewMode === "split") && (
-              <div className="markdown-preview bg-body text-body" style={{ width: viewMode === "split" ? "50%" : "100%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+              <div className="markdown-preview bg-body text-body" style={{ width: viewMode === "split" ? "50%" : "100%", marginLeft: viewMode === "split" ? "50%" : "0", display: "flex", flexDirection: "column", overflowY: "auto", height: "100%" }}>
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                   {matter(selectedNoteContent).content.trim()}
                 </ReactMarkdown>
               </div>
             )}
+          </div>
             {showMetadata && selectedNote && (
               <MetadataEditor
                 key={selectedNote.id}
