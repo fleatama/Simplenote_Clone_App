@@ -526,7 +526,7 @@ export default function Home() {
           
           {/* マークダウン編集ツールバー */}
           {(viewMode === "source" || viewMode === "split") && selectedNoteId && (
-            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap">
+            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap sticky-top" style={{ zIndex: 10 }}>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleUndo} title="元に戻す"><i className="bi bi-arrow-counterclockwise"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleRedo} title="やり直す"><i className="bi bi-arrow-clockwise"></i></button>
               <div className="vr mx-1"></div>
@@ -535,7 +535,12 @@ export default function Home() {
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("~~", "打ち消し線", "wrap")} title="打ち消し線"><i className="bi bi-type-strikethrough"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("`", "コード", "wrap")} title="インラインコード"><i className="bi bi-code"></i></button>
               <div className="vr mx-1"></div>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("### ", "見出し", "line")} title="見出し"><i className="bi bi-type-h3"></i></button>
+              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("# ", "見出し 1", "line")} title="見出し 1"><i className="bi bi-type-h1"></i></button>
+              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("## ", "見出し 2", "line")} title="見出し 2"><i className="bi bi-type-h2"></i></button>
+              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("### ", "見出し 3", "line")} title="見出し 3"><i className="bi bi-type-h3"></i></button>
+              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("#### ", "見出し 4", "line")} title="見出し 4"><i className="bi bi-type-h4"></i></button>
+              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("##### ", "見出し 5", "line")} title="見出し 5"><i className="bi bi-type-h5"></i></button>
+              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("###### ", "見出し 6", "line")} title="見出し 6"><i className="bi bi-type-h6"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("- ", "リスト項目", "line")} title="箇条書きリスト"><i className="bi bi-list-task"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("1. ", "リスト項目", "line")} title="番号付きリスト"><i className="bi bi-list-ol"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("- [ ] ", "タスク", "line")} title="タスクリスト"><i className="bi bi-check2-square"></i></button>
@@ -547,10 +552,10 @@ export default function Home() {
           )}
           <div className="flex-grow-1 overflow-hidden d-flex">
             {(viewMode === "source" || viewMode === "split") && (
-              <textarea ref={textareaRef} className="form-control border-0 p-4 fs-5 bg-body text-body note-textarea" style={{ resize: "none", width: viewMode === "split" ? "50%" : "100%" }} value={selectedNoteId !== null ? selectedNoteContent : ""} onChange={(e) => setSelectedNoteContent(e.target.value)} disabled={!selectedNoteId} placeholder="ここに入力するか、マークダウンツールバーを使用してください..."></textarea>
+              <textarea ref={textareaRef} className="form-control border-0 p-4 fs-5 bg-body text-body note-textarea" style={{ resize: "none", width: viewMode === "split" ? "50%" : "100%", overflowY: "auto" }} value={selectedNoteId !== null ? selectedNoteContent : ""} onChange={(e) => setSelectedNoteContent(e.target.value)} disabled={!selectedNoteId} placeholder="ここに入力するか、マークダウンツールバーを使用してください..."></textarea>
             )}
             {(viewMode === "reading" || viewMode === "split") && (
-              <div className="markdown-preview bg-body text-body" style={{ width: viewMode === "split" ? "50%" : "100%", display: "flex", flexDirection: "column" }}>
+              <div className="markdown-preview bg-body text-body" style={{ width: viewMode === "split" ? "50%" : "100%", display: "flex", flexDirection: "column", overflowY: "auto" }}>
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                   {matter(selectedNoteContent).content.trim()}
                 </ReactMarkdown>
