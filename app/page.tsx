@@ -41,6 +41,9 @@ export default function Home() {
   const [showMetadata, setShowMetadata] = useState<boolean>(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   
+  // スマホ表示時に明示的に一覧を表示しているかどうかを管理するステート
+  const [mobileShowList, setMobileShowList] = useState<boolean>(false);
+  
   // Undo / Redo の履歴管理用 State
   const [contentHistory, setContentHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
@@ -287,6 +290,7 @@ export default function Home() {
     setContentHistory([note.content]);
     setHistoryIndex(0);
     isInternalChangeRef.current = false;
+    setMobileShowList(false); // ノート選択時はスマホ一覧表示フラグをオフにする
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -343,9 +347,12 @@ export default function Home() {
   }, [status]);
 
   useEffect(() => {
+    // スマホで一覧表示が明示的に選ばれている場合は自動選択をバイパスする
+    if (mobileShowList) return;
+
     if (notes.length > 0 && !selectedNoteId) handleSelectNote(notes[0]);
     else if (notes.length === 0) { setSelectedNoteId(null); setSelectedNoteContent(""); }
-  }, [notes, selectedNoteId]);
+  }, [notes, selectedNoteId, mobileShowList]);
 
   useEffect(() => {
     if (!selectedNoteId) return;
@@ -444,8 +451,8 @@ export default function Home() {
         }
       `}</style>
       <div className="row g-0 flex-grow-1 overflow-hidden">
-        {/* 左側：メモ一覧 (スマホではノート選択時に非表示) */}
-        <div className={`col-md-4 border-end d-flex flex-column h-100 ${selectedNoteId ? 'd-none d-md-flex' : 'd-flex'}`}>
+        {/* 左側：メモ一覧 (スマホでは一覧表示フラグが有効な場合、またはノート未選択時に表示) */}
+        <div className={`col-md-4 border-end d-flex flex-column h-100 ${selectedNoteId && !mobileShowList ? 'd-none d-md-flex' : 'd-flex'}`}>
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
             {/* ログインユーザー情報表示 */}
             <div className="small text-muted mb-2 d-flex align-items-center gap-2">
@@ -488,14 +495,17 @@ export default function Home() {
           <div className="flex-grow-1 overflow-auto bg-body"><NoteList notes={filteredNotes} selectedNoteId={selectedNoteId} checkedIds={checkedIds} loading={loading} onSelectNote={handleSelectNote} onToggleCheck={toggleCheck} /></div>
         </div>
 
-        {/* 右側：エディタ・プレビュー (スマホではノート未選択時に非表示) */}
-        <div className={`col-md-8 d-flex flex-column h-100 bg-body ${selectedNoteId ? 'd-flex' : 'd-none d-md-flex'}`}>
+        {/* 右側：エディタ・プレビュー (スマホでは一覧表示中の場合に非表示) */}
+        <div className={`col-md-8 d-flex flex-column h-100 bg-body ${selectedNoteId && !mobileShowList ? 'd-flex' : 'd-none d-md-flex'}`}>
           <div className="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px" }}>
             <div className="d-flex align-items-center gap-2">
-              {/* スマホ画面で一覧に戻るボタン（ラベル付きで分かりやすく） */}
+              {/* スマホ画面で一覧に戻るボタン */}
               <button 
                 className="btn btn-sm btn-outline-primary d-md-none d-flex align-items-center gap-1 px-2 py-1" 
-                onClick={() => setSelectedNoteId(null)}
+                onClick={() => {
+                  setSelectedNoteId(null);
+                  setMobileShowList(true); // スマホ一覧表示フラグをオンにする
+                }}
                 title="一覧に戻る"
               >
                 <i className="bi bi-chevron-left"></i>
