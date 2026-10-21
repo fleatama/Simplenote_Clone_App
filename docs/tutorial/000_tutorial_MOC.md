@@ -30,6 +30,9 @@
 #### 📦 [[chapter5_export_and_final_polishing|第5章：最終仕上げ：一括エクスポート機能の実装とデプロイ]]
 - **学ぶこと**: 単一/一括でのMarkdownエクスポート（ZIPダウンロード）、全体UIのブラッシュアップ、プロダクションデプロイと検証。
 
+#### 🛡️ [[chapter6_maintenance_and_keep_alive|第6章：運用・保守と自動延命システムの構築]]
+- **学ぶこと**: Upstash Redis (Vercel KV) の無料枠維持のための定期実行 API（`/api/keep-alive`）の自作、`vercel.json` による Vercel Cron Jobs の設定、`CRON_SECRET` による認証保護とトラブルシューティング。
+
 ---
 
 ## 🛠️ トラブル解決とナレッジベース（相互リンク）

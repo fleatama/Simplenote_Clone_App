@@ -427,9 +427,25 @@ export default function Home() {
         .note-textarea:focus {
           background-color: var(--bs-body-bg);
         }
+
+        /* スマホ・レスポンシブ対応用クラス */
+        @media (max-width: 767.98px) {
+          .mobile-hidden {
+            display: none !important;
+          }
+          .mobile-visible {
+            display: flex !important;
+          }
+        }
+        @min-width: 768px {
+          .mobile-back-btn {
+            display: none !important;
+          }
+        }
       `}</style>
       <div className="row g-0 flex-grow-1 overflow-hidden">
-        <div className="col-md-4 border-end d-flex flex-column h-100">
+        {/* 左側：メモ一覧 (スマホではノート選択時に非表示) */}
+        <div className={`col-md-4 border-end d-flex flex-column h-100 ${selectedNoteId ? 'd-none d-md-flex' : 'd-flex'}`}>
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
             {/* ログインユーザー情報表示 */}
             <div className="small text-muted mb-2 d-flex align-items-center gap-2">
@@ -472,9 +488,18 @@ export default function Home() {
           <div className="flex-grow-1 overflow-auto bg-body"><NoteList notes={filteredNotes} selectedNoteId={selectedNoteId} checkedIds={checkedIds} loading={loading} onSelectNote={handleSelectNote} onToggleCheck={toggleCheck} /></div>
         </div>
 
-        <div className="col-md-8 d-flex flex-column h-100 bg-body">
+        {/* 右側：エディタ・プレビュー (スマホではノート未選択時に非表示) */}
+        <div className={`col-md-8 d-flex flex-column h-100 bg-body ${selectedNoteId ? 'd-flex' : 'd-none d-md-flex'}`}>
           <div className="px-4 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px" }}>
             <div className="d-flex align-items-center gap-3">
+              {/* スマホ画面で一覧に戻るボタン */}
+              <button 
+                className="btn btn-sm btn-outline-secondary border-0 d-md-none" 
+                onClick={() => setSelectedNoteId(null)}
+                title="一覧に戻る"
+              >
+                <i className="bi bi-arrow-left fs-5"></i>
+              </button>
               <button className={`btn btn-sm border-0 ${showMetadata ? "view-mode-active" : "btn-outline-secondary"}`} onClick={() => setShowMetadata(!showMetadata)}><i className="bi bi-tag"></i></button>
               <div className="d-flex gap-1 bg-secondary-subtle p-1 rounded">
                 <button className={`btn btn-sm border-0 ${viewMode === "source" ? "view-mode-active" : ""}`} onClick={() => setViewMode("source")} title="ソースモード"><i className="bi bi-code-slash"></i></button>

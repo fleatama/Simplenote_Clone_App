@@ -1,14 +1,18 @@
-# Simplenote Clone App (with Timestamp Feature)
+# Simplenote Clone App
 
-本プロジェクトは、シンプルな自動同期メモアプリ「Simplenote」のクローンアプリケーションです。
-標準的な機能に加え、ユーザーの利便性を高める独自の**タイムスタンプ挿入機能**を実装しています。
+本プロジェクトは、シンプルな同期メモアプリ「Simplenote」をベースに、モダンな技術スタックと実用的な機能を盛り込んだフルスタックのクローンアプリケーションです。
 
-## 🚀 特徴
+---
 
-- **自動保存 (Autosave):** ユーザーがタイピングを止めてから2秒後に自動でデータを保存（デバウンス処理を実装）。
-- **独自タイムスタンプ機能:** ボタン一つで、現在の日時をカーソル位置に即座に挿入。
-- **フルスタック構成:** フロントエンドからバックエンドAPI、データベース連携まで一貫して構築。
-- **レスポンシブデザイン:** Bootstrapを使用した、シンプルで清潔感のある2ペインレイアウト。
+## 🚀 主な機能・特徴
+
+- **ユーザー認証 (Authentication):** NextAuth (Auth.js) を活用したセキュアなログイン・認証機能。
+- **自動保存 (Autosave):** ユーザーのタイピングに合わせてスムーズにデータを保存する仕組み。
+- **Markdown & メタデータ対応:** `react-markdown` や `remark-gfm` を用いたリッチなノート編集と、メタデータの管理機能。
+- **データベース自動延命機能:** Upstash Redisの無料プランにおける自動削除（30日間の非アクティブ）を防ぐための、Vercel Cron対応型API（`/api/keep-alive`）を搭載。
+- **レスポンシブUI:** Bootstrap 5 を採用した、クリーンで使いやすい2ペインレイアウト。
+
+---
 
 ## 🛠 使用技術
 
@@ -16,30 +20,63 @@
 - **Next.js 16.0.10** (App Router, Turbopack)
 - **React 19.2.1**
 - **TypeScript 5.x**
+- **NextAuth (Auth.js) v5**
 
-### データベース (Database)
-- **Upstash Redis** (Serverless Redis)
-- **@upstash/redis 1.36.2**
+### データベース & インフラ
+- **Upstash Redis** (`@upstash/redis`)
+- **Vercel** (デプロイ & クラウドインフラ)
 
 ### UI / デザイン
 - **Bootstrap 5.3.8**
 - **Bootstrap Icons 1.13.1**
+- **React Markdown** (`react-markdown`, `remark-gfm`)
 
-### インフラ / デプロイ
-- **Vercel**
+---
 
-## 🔧 こだわったポイント・解決した課題
+## 📁 ディレクトリ構成
 
-1. **UXを損なわない自動保存:** 
-   頻繁なAPI通信を抑えるため、`setTimeout` と `clearTimeout` を活用したデバウンス処理を実装。保存状態を視覚的に伝える「保存中/保存済み」ステータスも追加しました。
-2. **環境に依存しないAPI設計:** 
-   Vercel環境特有のURL解析の課題に対し、`params` に依存せず `request.url` から直接IDを取得する柔軟なロジックへと改善。
-3. **最新技術の採用:** 
-   React 19 や Next.js 16 (Turbopack) といった最新のライブラリを使用し、モダンな開発環境での構築に挑戦しました。
+```text
+simplenote-clone/
+├── app/                  # Next.js App Router
+│   ├── api/              # APIエンドポイント (auth, notes, keep-alive)
+│   ├── components/       # UIコンポーネント (NoteList, MetadataEditor 等)
+│   ├── globals.css       # グローバルスタイル
+│   ├── layout.tsx        # 共通レイアウト
+│   └── page.tsx          # メインページ
+├── data/                 # データ処理関連
+├── docs/                 # ドキュメント・日報・トラブルシューティング
+├── utils/                # ユーティリティ関数
+├── auth.ts               # NextAuth 認証設定
+├── middleware.ts         # ミドルウェア
+├── vercel.json           # Vercel設定・Cronジョブ定義
+└── package.json          # 依存関係設定
+```
 
-## 🏃‍♂️ 実行方法
+---
 
-1. リポジトリをクローン
-2. 依存関係のインストール: `npm install`
-3. 環境変数の設定: `.env.local` を作成し、Upstash Redis の認証情報を設定
-4. 開発サーバーの起動: `npm run dev`
+## 🔧 工夫したポイント・トラブルシューティング
+
+1. **セキュアな認証とデータ分離:** NextAuthを導入し、ユーザーごとの安全なノート管理を実現。
+2. **データベースの自動延命 (Keep-Alive):** Upstash Redisのアーカイブを防ぐため、Vercel Cronから定期的に実行されるセキュアなエンドポイント（`CRON_SECRET` 認証付き）を実装。
+3. **最新技術環境への適応:** Next.js 16 (Turbopack) や React 19 の環境下でビルドエラーやルーティングの課題をクリアし最適化。
+
+---
+
+## 🏃‍♂️ 実行・セットアップ方法
+
+1. **リポジトリをクローン**
+2. **依存関係のインストール:**
+   ```bash
+   npm install
+   ```
+3. **環境変数の設定 (`.env.local`):**
+   ```env
+   KV_REST_API_URL=your_upstash_redis_url
+   KV_REST_API_TOKEN=your_upstash_redis_token
+   AUTH_SECRET=your_nextauth_secret
+   CRON_SECRET=your_cron_secret
+   ```
+4. **開発サーバーの起動:**
+   ```bash
+   npm run dev
+   ```
