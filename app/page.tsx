@@ -502,8 +502,8 @@ export default function Home() {
         </div>
 
         {/* 右側：エディタ・プレビュー (スマホでは一覧表示中の場合に非表示) */}
-        <div className={`col-md-8 d-flex flex-column h-100 bg-body ${selectedNoteId && !mobileShowList ? 'd-flex' : 'd-none d-md-flex'}`}>
-          <div className="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px" }}>
+        <div className={`col-md-8 d-flex flex-column h-100 bg-body ${selectedNoteId && !mobileShowList ? 'd-flex' : 'd-none d-md-flex'}`} style={{ height: "100dvh" }}>
+          <div className="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px", flexShrink: 0 }}>
             <div className="d-flex align-items-center gap-2">
               {/* スマホ画面で一覧に戻るボタン */}
               <button 
@@ -532,7 +532,7 @@ export default function Home() {
           
           {/* マークダウン編集ツールバー */}
           {(viewMode === "source" || viewMode === "split") && selectedNoteId && (
-            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap" style={{ zIndex: 10, flexShrink: 0, position: 'sticky', top: 0 }}>
+            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap" style={{ zIndex: 10, flexShrink: 0 }}>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleUndo} title="元に戻す"><i className="bi bi-arrow-counterclockwise"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleRedo} title="やり直す"><i className="bi bi-arrow-clockwise"></i></button>
               <div className="vr mx-1"></div>
