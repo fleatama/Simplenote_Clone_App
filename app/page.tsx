@@ -502,7 +502,7 @@ export default function Home() {
         </div>
 
         {/* 右側：エディタ・プレビュー (スマホでは一覧表示中の場合に非表示) */}
-        <div className={`col-md-8 d-flex flex-column h-100 bg-body ${selectedNoteId && !mobileShowList ? 'd-flex' : 'd-none d-md-flex'}`} style={{ height: "100dvh" }}>
+        <div className={`col-md-8 d-flex flex-column bg-body ${selectedNoteId && !mobileShowList ? 'd-flex' : 'd-none d-md-flex'}`} style={{ height: "100dvh", overflow: "hidden" }}>
           <div className="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px", flexShrink: 0 }}>
             <div className="d-flex align-items-center gap-2">
               {/* スマホ画面で一覧に戻るボタン */}
@@ -556,9 +556,9 @@ export default function Home() {
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("codeblock", "", "block")} title="コードブロック"><i className="bi bi-terminal"></i></button>
             </div>
           )}
-          <div className="flex-grow-1 overflow-hidden d-flex position-relative">
+          <div className="flex-grow-1" style={{ overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             {(viewMode === "source" || viewMode === "split") && (
-              <textarea ref={textareaRef} className="form-control border-0 p-4 fs-5 bg-body text-body note-textarea" style={{ resize: "none", width: viewMode === "split" ? "50%" : "100%", overflowY: "auto", height: "100%", position: "absolute", top: 0, left: 0 }} value={selectedNoteId !== null ? selectedNoteContent : ""} onChange={(e) => setSelectedNoteContent(e.target.value)} disabled={!selectedNoteId} placeholder="ここに入力するか、マークダウンツールバーを使用してください..."></textarea>
+              <textarea ref={textareaRef} className="form-control border-0 p-4 fs-5 bg-body text-body note-textarea" style={{ resize: "none", width: viewMode === "split" ? "50%" : "100%", overflowY: "auto", height: "100%", position: "relative" }} value={selectedNoteId !== null ? selectedNoteContent : ""} onChange={(e) => setSelectedNoteContent(e.target.value)} disabled={!selectedNoteId} placeholder="ここに入力するか、マークダウンツールバーを使用してください..."></textarea>
             )}
             {(viewMode === "reading" || viewMode === "split") && (
               <div className="markdown-preview bg-body text-body" style={{ width: viewMode === "split" ? "50%" : "100%", marginLeft: viewMode === "split" ? "50%" : "0", display: "flex", flexDirection: "column", overflowY: "auto", height: "100%" }}>
