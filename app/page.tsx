@@ -585,6 +585,7 @@ export default function Home() {
                 onTagClick={handleTagClick}
               />
             )}
+          </div>
         </div>
       </div>
     );
