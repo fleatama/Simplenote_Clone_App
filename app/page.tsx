@@ -532,7 +532,7 @@ export default function Home() {
           
           {/* マークダウン編集ツールバー */}
           {(viewMode === "source" || viewMode === "split") && selectedNoteId && (
-            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap" style={{ zIndex: 10, flexShrink: 0 }}>
+            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap" style={{ zIndex: 10, flexShrink: 0, position: 'sticky', top: 0 }}>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleUndo} title="元に戻す"><i className="bi bi-arrow-counterclockwise"></i></button>
               <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleRedo} title="やり直す"><i className="bi bi-arrow-clockwise"></i></button>
               <div className="vr mx-1"></div>
