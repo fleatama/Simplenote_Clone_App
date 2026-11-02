@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { sortNotes, SortMode } from "@/utils/sorting";
+import { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { getNoteTitle, formatDateTime, generateFrontMatter, stripFrontMatter } from "../utils/helpers";
 import NoteList from "./components/NoteList";
 import MetadataEditor from "./components/MetadataEditor";
+import EditorToolbar from "./components/EditorToolbar";
+import NoteEditor from "./components/NoteEditor";
+import { useNotes } from "./hooks/useNotes";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -27,12 +31,9 @@ type ViewMode = "source" | "split" | "reading";
 
 export default function Home() {
   const { data: session, status } = useSession();
-  
-  const [notes, setNotes] = useState<Note[]>([]);
+  const { notes, setNotes, loading, error, saveNote, deleteNote, fetchNotes } = useNotes();
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedNoteContent, setSelectedNoteContent] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -40,10 +41,18 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("source");
   const [showMetadata, setShowMetadata] = useState<boolean>(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  
-  // スマホ表示時に明示的に一覧を表示しているかどうかを管理するステート
   const [mobileShowList, setMobileShowList] = useState<boolean>(false);
+  const [sortMode, setSortMode] = useState<SortMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("note-sort-mode") as SortMode) || "updatedDesc";
+    }
+    return "updatedDesc";
+  });
   
+  useEffect(() => {
+    localStorage.setItem("note-sort-mode", sortMode);
+  }, [sortMode]);
+
   // Undo / Redo の履歴管理用 State
   const [contentHistory, setContentHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
@@ -196,8 +205,12 @@ export default function Home() {
     try {
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "notes.zip");
-    } catch (err: any) {
-      setError("一括エクスポートに失敗しました");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError("一括エクスポートに失敗しました: " + err.message);
+      } else {
+        setError("一括エクスポートに失敗しました");
+      }
     }
   };
 
@@ -225,7 +238,10 @@ export default function Home() {
             const newNote: Note = await response.json();
             newNotes.push(newNote);
           }
-        } catch (err) { console.error("Import failed:", err); }
+        } catch (err: unknown) {
+          if (err instanceof Error) console.error("Import failed:", err.message);
+          else console.error("Import failed:", err);
+        }
       }
     }
     if (newNotes.length > 0) setNotes((prev) => [...newNotes, ...prev]);
@@ -252,19 +268,17 @@ export default function Home() {
   const handleSaveNote = async (noteId: string, content: string, metadata?: Note["metadata"]) => {
     setSaveStatus("saving");
     try {
-      const response = await fetch(`/api/notes/${noteId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, metadata }),
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const updatedNote: Note = await response.json();
+      const updatedNote = await saveNote(noteId, content, metadata);
       setNotes((prev) => prev.map((n) => (n.id === updatedNote.id ? updatedNote : n)));
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setSaveStatus("error");
-      setError(err.message);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("不明なエラーが発生しました");
+      }
     }
   };
 
@@ -296,14 +310,15 @@ export default function Home() {
   const handleDeleteNote = async (noteId: string) => {
     if (!confirm("削除しますか？")) return;
     try {
-      const response = await fetch(`/api/notes/${noteId}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("削除失敗");
-      setNotes((prev) => prev.filter((n) => n.id !== noteId));
+      await deleteNote(noteId);
       if (selectedNoteId === noteId) {
         setSelectedNoteId(null);
         setSelectedNoteContent("");
       }
-    } catch (err: any) { setError(err.message); }
+    } catch (err: unknown) {
+      if (err instanceof Error) setError(err.message);
+      else setError("削除に失敗しました");
+    }
   };
 
   const handleBulkDelete = async () => {
@@ -342,7 +357,7 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      fetch("/api/notes").then(r => r.json()).then(setNotes).catch(e => setError(e.message)).finally(() => setLoading(false));
+      fetchNotes();
     }
   }, [status]);
 
@@ -450,7 +465,7 @@ export default function Home() {
             display: flex !important;
           }
         }
-        @min-width: 768px {
+        @media (min-width: 768px) {
           .mobile-back-btn {
             display: none !important;
           }
@@ -460,49 +475,38 @@ export default function Home() {
         {/* 左側：メモ一覧 (スマホでは一覧表示フラグが有効な場合、またはノート未選択時に表示) */}
         <div className={`col-md-4 border-end d-flex flex-column h-100 ${selectedNoteId && !mobileShowList ? 'd-none d-md-flex' : 'd-flex'}`}>
           <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
-            {/* ログインユーザー情報表示 */}
-            <div className="small text-muted mb-2 d-flex align-items-center gap-2">
-              {session?.user?.image && (
-                <img src={session.user.image} alt="User" className="rounded-circle" style={{ width: '24px', height: '24px' }} />
-              )}
-              <div>
-                <div>{session?.user?.name || "ユーザー"}</div>
-                <div style={{ fontSize: '0.75rem' }}>{session?.user?.email || "未ログイン"}</div>
-                <button 
-                  className="btn btn-sm btn-link text-danger p-0 mt-1" 
-                  style={{ fontSize: '0.75rem' }}
-                  onClick={() => signOut()}
-                >
-                  ログアウト
-                </button>
-              </div>
-            </div>
-            <div className="d-flex align-items-center gap-3">
-              {activeTag ? (
-                <div className="badge bg-primary rounded-pill d-flex align-items-center gap-1">#{activeTag}<button className="btn-close btn-close-white ms-1" style={{ fontSize: '0.5rem' }} onClick={() => setActiveTag(null)}></button></div>
-              ) : (
-                <>
-                  <input type="checkbox" className="form-check-input m-0" checked={notes.length > 0 && checkedIds.size === notes.length} onChange={toggleSelectAll} />
-                  {checkedIds.size > 0 && (
-                    <>
-                      <button className="btn btn-link text-danger p-0 border-0" onClick={handleBulkDelete}><i className="bi bi-trash-fill fs-5"></i></button>
-                      <button className="btn btn-link text-body p-0 border-0" onClick={handleBulkExport}><i className="bi bi-download fs-5"></i></button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="d-flex align-items-center gap-3">
-              <button className="btn btn-link text-body p-0 border-0" onClick={() => fileInputRef.current?.click()}><i className="bi bi-upload fs-5"></i></button>
-              <input type="file" ref={fileInputRef} onChange={handleImport} accept=".md" multiple style={{ display: 'none' }} />
-              <button className="btn btn-link text-body p-0 border-0" onClick={handleCreateNewNote}><i className="bi bi-pencil-square fs-5"></i></button>
-            </div>
+            <select
+              className="form-select form-select-sm"
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value as SortMode)}
+            >
+              <option value="updatedDesc">更新日時（新しい順）</option>
+              <option value="updatedAsc">更新日時（古い順）</option>
+              <option value="titleAsc">タイトル（昇順）</option>
+              <option value="titleDesc">タイトル（降順）</option>
+            </select>
           </div>
-          <div className="flex-grow-1 overflow-auto bg-body"><NoteList notes={filteredNotes} selectedNoteId={selectedNoteId} checkedIds={checkedIds} loading={loading} onSelectNote={handleSelectNote} onToggleCheck={toggleCheck} /></div>
+          <NoteList
+            notes={sortNotes(filteredNotes, sortMode)}
+            onSelectNote={(note) => { handleSelectNote(note); setMobileShowList(false); }}
+            selectedNoteId={selectedNoteId}
+            checkedIds={checkedIds}
+            loading={loading}
+            onToggleCheck={toggleCheck}
+          />
         </div>
 
         {/* 右側：エディタ・プレビュー (スマホでは一覧表示中の場合に非表示) */}
-        <div className={`col-md-8 d-flex flex-column bg-body ${selectedNoteId && !mobileShowList ? 'd-flex' : 'd-none d-md-flex'}`} style={{ height: "100dvh", overflow: "hidden" }}>
+        <div 
+          className={`col-md-8 d-flex flex-column bg-body ${selectedNoteId && !mobileShowList ? 'd-flex' : 'd-none d-md-flex'}`} 
+          style={{ 
+            height: "100dvh", 
+            overflow: "hidden",
+            position: typeof window !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'fixed' : 'relative',
+            width: "100%",
+            top: 0
+          }}
+        >
           <div className="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary" style={{ minHeight: "57px", flexShrink: 0 }}>
             <div className="d-flex align-items-center gap-2">
               {/* スマホ画面で一覧に戻るボタン */}
@@ -532,61 +536,37 @@ export default function Home() {
           
           {/* マークダウン編集ツールバー */}
           {(viewMode === "source" || viewMode === "split") && selectedNoteId && (
-            <div className="px-4 py-1 border-bottom d-flex align-items-center gap-1 bg-body-secondary flex-wrap" style={{ zIndex: 10, flexShrink: 0 }}>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleUndo} title="元に戻す"><i className="bi bi-arrow-counterclockwise"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={handleRedo} title="やり直す"><i className="bi bi-arrow-clockwise"></i></button>
-              <div className="vr mx-1"></div>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("**", "太字", "wrap")} title="太字"><i className="bi bi-type-bold"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("*", "斜体", "wrap")} title="斜体"><i className="bi bi-type-italic"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("~~", "打ち消し線", "wrap")} title="打ち消し線"><i className="bi bi-type-strikethrough"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("`", "コード", "wrap")} title="インラインコード"><i className="bi bi-code"></i></button>
-              <div className="vr mx-1"></div>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("# ", "見出し 1", "line")} title="見出し 1"><i className="bi bi-type-h1"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("## ", "見出し 2", "line")} title="見出し 2"><i className="bi bi-type-h2"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("### ", "見出し 3", "line")} title="見出し 3"><i className="bi bi-type-h3"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("#### ", "見出し 4", "line")} title="見出し 4"><i className="bi bi-type-h4"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("##### ", "見出し 5", "line")} title="見出し 5"><i className="bi bi-type-h5"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("###### ", "見出し 6", "line")} title="見出し 6"><i className="bi bi-type-h6"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("- ", "リスト項目", "line")} title="箇条書きリスト"><i className="bi bi-list-task"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("1. ", "リスト項目", "line")} title="番号付きリスト"><i className="bi bi-list-ol"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("- [ ] ", "タスク", "line")} title="タスクリスト"><i className="bi bi-check2-square"></i></button>
-              <div className="vr mx-1"></div>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("link", "", "block")} title="リンク挿入"><i className="bi bi-link-45deg"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("image", "", "block")} title="画像挿入"><i className="bi bi-image"></i></button>
-              <button className="btn btn-sm btn-outline-secondary border-0" onClick={() => insertMarkdown("codeblock", "", "block")} title="コードブロック"><i className="bi bi-terminal"></i></button>
-            </div>
+            <EditorToolbar
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onInsertMarkdown={insertMarkdown}
+            />
           )}
-          <div className="flex-grow-1" style={{ overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-            {(viewMode === "source" || viewMode === "split") && (
-              <textarea ref={textareaRef} className="form-control border-0 p-4 fs-5 bg-body text-body note-textarea" style={{ resize: "none", width: viewMode === "split" ? "50%" : "100%", overflowY: "auto", height: "100%", position: "relative" }} value={selectedNoteId !== null ? selectedNoteContent : ""} onChange={(e) => setSelectedNoteContent(e.target.value)} disabled={!selectedNoteId} placeholder="ここに入力するか、マークダウンツールバーを使用してください..."></textarea>
-            )}
-            {(viewMode === "reading" || viewMode === "split") && (
-              <div className="markdown-preview bg-body text-body" style={{ width: viewMode === "split" ? "50%" : "100%", marginLeft: viewMode === "split" ? "50%" : "0", display: "flex", flexDirection: "column", overflowY: "auto", height: "100%" }}>
-                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-                  {matter(selectedNoteContent).content.trim()}
-                </ReactMarkdown>
-              </div>
-            )}
-          </div>
-            {showMetadata && selectedNote && (
-              <MetadataEditor
-                key={selectedNote.id}
-                note={selectedNote}
-                onUpdate={(u) => {
-                  const frontMatter = generateFrontMatter(u);
-                  // 堅牢な stripFrontMatter 関数を使って本文のみを完全に取得（ゴミデータも自動で一掃）
-                  const cleanContent = stripFrontMatter(u.content);
-                  const newContent = `${frontMatter}\n${cleanContent}`;
-                  const finalNote = { ...u, content: newContent };
-                  setNotes((prev) => prev.map((n) => (n.id === finalNote.id ? finalNote : n)));
-                  setSelectedNoteContent(newContent);
-                  handleSaveNote(finalNote.id, newContent, finalNote.metadata);
-                }}
-                onTagClick={handleTagClick}
-              />
-            )}
-          </div>
+          <NoteEditor
+            viewMode={viewMode}
+            selectedNoteId={selectedNoteId}
+            selectedNoteContent={selectedNoteContent}
+            textareaRef={textareaRef}
+            onContentChange={setSelectedNoteContent}
+          />
+          {showMetadata && selectedNote && (
+            <MetadataEditor
+              key={selectedNote.id}
+              note={selectedNote}
+              onUpdate={(u) => {
+                const frontMatter = generateFrontMatter(u);
+                const cleanContent = stripFrontMatter(u.content);
+                const newContent = `${frontMatter}\n${cleanContent}`;
+                const finalNote = { ...u, content: newContent };
+                setNotes((prev) => prev.map((n) => (n.id === finalNote.id ? finalNote : n)));
+                setSelectedNoteContent(newContent);
+                handleSaveNote(finalNote.id, newContent, finalNote.metadata);
+              }}
+              onTagClick={handleTagClick}
+            />
+          )}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
