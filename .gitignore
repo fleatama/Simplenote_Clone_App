@@ -47,14 +47,13 @@ GEMINI.md
 vercelの削除した値についてのメモ.md
 
 # ローカルのみに残しているディレクトリ セキュリティ面を考慮しAIとの生ログの流出を避ける対策として
-simplenote-clone/docs/Gemini CLI Logs/
-simplenote-clone/docs/reports/
-simplenote-clone/docs/roadmap/
-simplenote-clone/docs/troubleshooting/
-simplenote-clone/docs/tutorial/
-simplenote-clone/docs/universal-/
-simplenote-clone/docs/vocabulary/
-simplenote-clone/docs/zed_threds/
-
-simplenote-clone/docs/ai_guidelines.md
-simplenote-clone/docs/universal-access-responsive-guide.md
+docs/Gemini CLI Logs/
+docs/reports/
+docs/roadmap/
+docs/troubleshooting/
+docs/tutorial/
+docs/vocabulary/
+docs/zed_threds/
+docs/universal-access/
+docs/ai_guidelines.md
+docs/universal-access-responsive-guide.md
