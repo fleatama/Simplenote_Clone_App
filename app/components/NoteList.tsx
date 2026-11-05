@@ -36,7 +36,7 @@ export default function NoteList({
   }
 
   return (
-    <div className="list-group list-group-flush">
+    <div className="list-group list-group-flush h-100 overflow-y-auto">
       {notes.map((note) => (
         <div key={note.id} className="d-flex align-items-stretch border-bottom">
           <div className="px-3 d-flex align-items-center bg-body">
@@ -51,19 +51,25 @@ export default function NoteList({
           <a
             href="#"
             onClick={(e) => { e.preventDefault(); onSelectNote(note); }}
-            className={`list-group-item list-group-item-action py-3 border-0 flex-grow-1 ${
+            className={`list-group-item list-group-item-action py-3 border-0 flex-grow-1 min-width-0 ${
               note.id === selectedNoteId ? "active" : ""
             }`}
           >
-            <div className="d-flex w-100 justify-content-between align-items-center">
-              <h6 className={`mb-1 fw-semibold ${note.id === selectedNoteId ? "text-white" : "text-body"}`}>
+            <div className="d-flex w-100 justify-content-between align-items-start gap-2">
+              <h6 className={`mb-1 fw-semibold text-truncate ${note.id === selectedNoteId ? "text-white" : "text-body"}`}>
                 {getNoteTitle(note.content) || "Untitled"}
               </h6>
-              <small className={note.id === selectedNoteId ? "text-white-50" : "text-muted"} style={{ fontSize: "0.7rem" }}>
+              <small className={`text-nowrap ${note.id === selectedNoteId ? "text-white-50" : "text-muted"}`} style={{ fontSize: "0.7rem" }}>
                 {formatDateTime(note.updatedAt)}
               </small>
             </div>
-            <p className={`mb-0 small text-truncate ${note.id === selectedNoteId ? "text-white-50" : "text-muted"}`} style={{ fontSize: "0.8rem" }}>
+            <p className={`mb-0 small ${note.id === selectedNoteId ? "text-white-50" : "text-muted"}`} style={{ 
+              fontSize: "0.8rem",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden"
+            }}>
               {note.content.split("\n").slice(1).join(" ") || "No content"}
             </p>
           </a>

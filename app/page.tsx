@@ -9,6 +9,7 @@ import MetadataEditor from "./components/MetadataEditor";
 import EditorToolbar from "./components/EditorToolbar";
 import NoteEditor from "./components/NoteEditor";
 import { useNotes } from "./hooks/useNotes";
+import { useEditorHistory } from "./hooks/useEditorHistory";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -53,31 +54,12 @@ export default function Home() {
     localStorage.setItem("note-sort-mode", sortMode);
   }, [sortMode]);
 
-  // Undo / Redo の履歴管理用 State
-  const [contentHistory, setContentHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState<number>(-1);
-  const isInternalChangeRef = useRef<boolean>(false); // 履歴更新による変更か、ユーザー入力による変更かを区別するフラグ
+  // Undo / Redo の履歴管理用 Custom Hook
+  const { pushToHistory, undo, redo } = useEditorHistory(selectedNoteContent);
+  const isInternalChangeRef = useRef<boolean>(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // 履歴に現在の状態を追加する関数
-  const pushToHistory = (newContent: string) => {
-    setContentHistory((prev) => {
-      const nextHistory = prev.slice(0, historyIndex + 1);
-      // 直前と同じコンテンツならスタックに追加しない
-      if (nextHistory[nextHistory.length - 1] === newContent) {
-        return prev;
-      }
-      const updated = [...nextHistory, newContent];
-      // 履歴は最大50件保持
-      if (updated.length > 50) {
-        updated.shift();
-      }
-      setHistoryIndex(updated.length - 1);
-      return updated;
-    });
-  };
 
   // Markdown装飾を挿入する関数
   const insertMarkdown = (syntax: string, placeholder: string = "", type: "wrap" | "block" | "line" = "wrap") => {
@@ -138,35 +120,19 @@ export default function Home() {
     }, 0);
   };
 
-  // Undo / Redo ボタンのハンドリング (Reactステート履歴ベース)
+  // Undo / Redo ボタンのハンドリング
   const handleUndo = () => {
-    if (historyIndex > 0) {
-      const prevIndex = historyIndex - 1;
-      const prevContent = contentHistory[prevIndex];
-      isInternalChangeRef.current = true;
-      setHistoryIndex(prevIndex);
-      setSelectedNoteContent(prevContent);
-      
-      // テキストエリアにフォーカスを当てる
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 0);
-    }
+    const prevContent = undo(selectedNoteContent);
+    setSelectedNoteContent(prevContent);
+    isInternalChangeRef.current = true;
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const handleRedo = () => {
-    if (historyIndex < contentHistory.length - 1) {
-      const nextIndex = historyIndex + 1;
-      const nextContent = contentHistory[nextIndex];
-      isInternalChangeRef.current = true;
-      setHistoryIndex(nextIndex);
-      setSelectedNoteContent(nextContent);
-      
-      // テキストエリアにフォーカスを当てる
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 0);
-    }
+    const nextContent = redo(selectedNoteContent);
+    setSelectedNoteContent(nextContent);
+    isInternalChangeRef.current = true;
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const filteredNotes = activeTag 
@@ -297,12 +263,13 @@ export default function Home() {
     } catch (err: any) { setError(err.message); }
   };
 
-  const handleSelectNote = (note: Note) => {
-    setSelectedNoteId(note.id);
+  const handleSelectNote = (noteId: string) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note) return;
+    setSelectedNoteId(noteId);
     setSelectedNoteContent(note.content);
     // 履歴スタックを初期化
-    setContentHistory([note.content]);
-    setHistoryIndex(0);
+    resetHistory(note.content);
     isInternalChangeRef.current = false;
     setMobileShowList(false); // ノート選択時はスマホ一覧表示フラグをオフにする
   };
