@@ -24,7 +24,7 @@ export async function PUT(request: Request) {
     const userKey = getUserKey(session.user.id);
     const updatedNoteData = await request.json();
 
-    const existingNote: Note | null = await redis.hget(userKey, id);
+    const existingNote: any = await redis.hget(userKey, id);
     if (!existingNote) {
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }

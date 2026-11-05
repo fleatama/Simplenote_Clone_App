@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "test": "vitest run"
+    "start": "next start"
   },
   "dependencies": {
     "@types/file-saver": "^2.0.7",
