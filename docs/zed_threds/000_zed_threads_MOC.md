@@ -39,7 +39,17 @@ Zed エディタの AI アシスタント機能（スレッド）を用いて行
 
 ---
 
-## 🔗 関連ドキュメントへのリンク
+### 4. [[Generating concise titles without punctuation|Generating concise titles without punctuation (一覧ソート機能追加と大規模リファクタリング)]]
+- **概要**:
+  ノート一覧のソート機能実装および、巨大化した `page.tsx` のコンポーネント分割、フック化（`useNotes`）を行うリファクタリングセッション。
+  `any` 型の削減、ログ削除、Turbopack 関連のビルドエラー修正を同時に進行。Git履歴をタスク単位で管理する指針を確立。
+- **主なトピック**:
+  - 更新日時・タイトル順のソート機能実装
+  - `page.tsx` から `useNotes` フックへのロジック分離
+  - 型安全性の向上（TS/Any対応）
+  - Obsidian 同期用エージェントスキル (`obsidian-docs-sync`) の作成
+
+---
 - [[../reports/01_project_inception_and_setup|制作レポート (docs/reports)]]
 - [[../troubleshooting/000_トラブルシューティング_MOC|トラブルシューティング MOC (docs/troubleshooting)]]
 - [[../tutorial/000_tutorial_MOC|ハンズオン再構築チュートリアル (docs/tutorial)]]

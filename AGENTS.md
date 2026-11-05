@@ -40,3 +40,13 @@
    * API ID解析: Vercel環境での params オブジェクトの挙動（Promise）に対応するため、request.url から直接IDを取得する手法を採用。
    * Race Condition: 新規作成ボタンの連打対策として、数値連番IDを廃止し、crypto.randomUUID() によるUUID採用。
    * OS互換性: macOS 11 (Big Sur) 環境でのテスト実行のため、ライブラリのバージョン固定と --legacy-peer-deps の活用。
+
+  ## スキル作成時のルール（Agent Skill Rules）
+   * **YAML Frontmatter の必須定義**: エージェントのスキル（`SKILL.md`）を作成・更新する際は、必ず冒頭に以下の YAML Frontmatter ヘッダーを正確に記述すること（記述漏れがあるとエージェントスキルとして正しく認識されず構文エラーとなる）。
+     ```yaml
+     ---
+     name: スキル名（ケバブケース）
+     description: スキルの詳細な説明
+     disable-model-invocation: false
+     ---
+     ```
