@@ -164,6 +164,13 @@ export default function Home() {
     const savedSort = localStorage.getItem("note-sort-mode") as SortMode;
     if (savedSort) setSortMode(savedSort);
   }, []);
+const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("updated-desc");
+
+  useEffect(() => {
+    const savedSort = localStorage.getItem("note-sort-mode") as SortMode;
+    if (savedSort) setSortMode(savedSort);
+  }, []);
 
   const filteredNotes = sortNotes(
     activeTag ? notes.filter(n => n.metadata?.tags?.includes(activeTag)) : notes,
