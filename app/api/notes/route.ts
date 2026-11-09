@@ -7,9 +7,6 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 });
 
-// 以下の行を追加 2026-06-19 5:45追加
-console.log("DEBUG: Redis URL:", process.env.KV_REST_API_URL);
-
 const getUserKey = (userId: string) => `user:${userId}:notes`;
 
 // GET /api/notes (メモ一覧の取得)
@@ -42,16 +39,13 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    console.log("DEBUG: Session data:", session);
 
     if (!session?.user?.id) {
-      console.log("DEBUG: Unauthorized access attempt");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const userKey = getUserKey(session.user.id);
     const newNoteData = await request.json();
-    console.log("DEBUG: Received data:", newNoteData);
 
     // UUIDを生成 (絶対に重複しないID)
     const newId = crypto.randomUUID();
@@ -65,13 +59,12 @@ export async function POST(request: Request) {
       metadata: newNoteData.metadata || { tags: [], aliases: [] },
     };
 
-    console.log("DEBUG: Attempting to save to Redis key:", userKey);
     // Redisに保存 (保存時は文字列としてJSONを保存)
     await redis.hset(userKey, { [newId]: JSON.stringify(newNote) });
 
     return NextResponse.json(newNote, { status: 201 });
   } catch (error) {
-    console.error("DEBUG: Failed to create note:", error);
+    console.error("Failed to create note:", error);
     return NextResponse.json(
       { error: "Failed to create note", details: String(error) },
       { status: 500 },
