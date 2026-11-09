@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { getNoteTitle, formatDateTime, generateFrontMatter, stripFrontMatter } from "../utils/helpers";
+import { getNoteTitle, formatDateTime, generateFrontMatter, stripFrontMatter, sortNotes, SortMode } from "../utils/helpers";
 import NoteList from "./components/NoteList";
 import MetadataEditor from "./components/MetadataEditor";
 import ReactMarkdown from "react-markdown";
@@ -160,9 +160,15 @@ export default function Home() {
     }
   };
 
-  const filteredNotes = activeTag 
-    ? notes.filter(n => n.metadata?.tags?.includes(activeTag))
-    : notes;
+  useEffect(() => {
+    const savedSort = localStorage.getItem("note-sort-mode") as SortMode;
+    if (savedSort) setSortMode(savedSort);
+  }, []);
+
+  const filteredNotes = sortNotes(
+    activeTag ? notes.filter(n => n.metadata?.tags?.includes(activeTag)) : notes,
+    sortMode
+  );
 
   const handleTagClick = (tag: string) => {
     setActiveTag(tag === activeTag ? null : tag);
@@ -509,6 +515,21 @@ export default function Home() {
               )}
             </div>
             <div className="d-flex align-items-center gap-3">
+              <select 
+                className="form-select form-select-sm" 
+                style={{ width: 'auto' }} 
+                value={sortMode} 
+                onChange={(e) => {
+                  const val = e.target.value as SortMode;
+                  setSortMode(val);
+                  localStorage.setItem("note-sort-mode", val);
+                }}
+              >
+                <option value="updated-desc">更新日時</option>
+                <option value="created-desc">作成日時</option>
+                <option value="title-asc">タイトル (A-Z)</option>
+                <option value="title-desc">タイトル (Z-A)</option>
+              </select>
               <button className="btn btn-link text-body p-0 border-0" onClick={() => fileInputRef.current?.click()}><i className="bi bi-upload fs-5"></i></button>
               <input type="file" ref={fileInputRef} onChange={handleImport} accept=".md" multiple style={{ display: 'none' }} />
               <button className="btn btn-link text-body p-0 border-0" onClick={handleCreateNewNote}><i className="bi bi-pencil-square fs-5"></i></button>
