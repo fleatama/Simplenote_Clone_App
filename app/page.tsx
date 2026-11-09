@@ -342,7 +342,23 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      fetch("/api/notes").then(r => r.json()).then(setNotes).catch(e => setError(e.message)).finally(() => setLoading(false));
+      fetch("/api/notes")
+        .then((r) => {
+          if (!r.ok) {
+            throw new Error(`Failed to fetch notes: ${r.status}`);
+          }
+          return r.json();
+        })
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setNotes(data);
+          } else {
+            console.error("Received non-array data for notes:", data);
+            setNotes([]);
+          }
+        })
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false));
     }
   }, [status]);
 
