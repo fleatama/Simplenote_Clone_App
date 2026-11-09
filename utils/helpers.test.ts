@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getNoteTitle, generateFrontMatter, stripFrontMatter } from "./helpers";
+import { getNoteTitle, generateFrontMatter, stripFrontMatter, sortNotes, SortMode } from "./helpers";
 import { Note } from "../app/page";
 
 // フロントマター（ノートのメタデータ）の解析とクリーンアップ機能のテスト
@@ -89,5 +89,66 @@ This is the final clean note body.`;
     const body = stripFrontMatter(highlyCorrupted);
     // 複雑に蓄積したゴミデータもきれいさっぱり消せることを確認します
     expect(body).toBe("This is the final clean note body.");
+  });
+});
+
+describe("sortNotes function", () => {
+  const sampleNotes: Note[] = [
+    {
+      id: "1",
+      content: "Apple",
+      createdAt: "2026-01-01T10:00:00Z",
+      updatedAt: "2026-01-03T10:00:00Z",
+      metadata: { tags: [], aliases: [] },
+    },
+    {
+      id: "2",
+      content: "Banana",
+      createdAt: "2026-01-02T10:00:00Z",
+      updatedAt: "2026-01-02T10:00:00Z",
+      metadata: { tags: [], aliases: [] },
+    },
+    {
+      id: "3",
+      content: "", // 空タイトル
+      createdAt: "2026-01-03T10:00:00Z",
+      updatedAt: "2026-01-05T10:00:00Z",
+      metadata: { tags: [], aliases: [] },
+    },
+    {
+      id: "4",
+      content: "Apple", // タイトル重複 (id 1 と同じ)
+      createdAt: "2026-01-04T10:00:00Z",
+      updatedAt: "2026-01-04T10:00:00Z",
+      metadata: { tags: [], aliases: [] },
+    },
+  ];
+
+  it("should sort by updated-desc by default", () => {
+    const sorted = sortNotes(sampleNotes);
+    expect(sorted.map((n) => n.id)).toEqual(["3", "4", "1", "2"]);
+  });
+
+  it("should sort by created-desc", () => {
+    const sorted = sortNotes(sampleNotes, "created-desc");
+    expect(sorted.map((n) => n.id)).toEqual(["4", "3", "2", "1"]);
+  });
+
+  it("should sort by title-asc placing empty title at the end", () => {
+    const sorted = sortNotes(sampleNotes, "title-asc");
+    // Apple (updatedAt 2026-01-04) -> Apple (updatedAt 2026-01-03) -> Banana -> 空
+    expect(sorted.map((n) => n.id)).toEqual(["4", "1", "2", "3"]);
+  });
+
+  it("should sort by title-desc placing empty title at the end", () => {
+    const sorted = sortNotes(sampleNotes, "title-desc");
+    // Banana -> Apple (updatedAt 2026-01-04) -> Apple (updatedAt 2026-01-03) -> 空
+    expect(sorted.map((n) => n.id)).toEqual(["2", "4", "1", "3"]);
+  });
+
+  it("should not mutate original array", () => {
+    const originalIds = sampleNotes.map((n) => n.id);
+    sortNotes(sampleNotes, "title-asc");
+    expect(sampleNotes.map((n) => n.id)).toEqual(originalIds);
   });
 });

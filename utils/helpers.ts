@@ -23,6 +23,42 @@ export const getNoteTitle = (content: string): string => {
   return title.length > 30 ? title.substring(0, 30) + "..." : title;
 };
 
+export type SortMode = "updated-desc" | "created-desc" | "title-asc" | "title-desc";
+
+/**
+ * Sorts notes array based on specified sort mode without mutating the original array.
+ */
+export const sortNotes = (notes: Note[], mode: SortMode = "updated-desc"): Note[] => {
+  return [...notes].sort((a, b) => {
+    if (mode === "created-desc") {
+      const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (diff !== 0) return diff;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+
+    if (mode === "title-asc" || mode === "title-desc") {
+      const titleA = getNoteTitle(stripFrontMatter(a.content));
+      const titleB = getNoteTitle(stripFrontMatter(b.content));
+
+      if (!titleA && !titleB) {
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
+      if (!titleA) return 1;
+      if (!titleB) return -1;
+
+      const comp = titleA.localeCompare(titleB, "ja");
+      if (comp !== 0) {
+        return mode === "title-asc" ? comp : -comp;
+      }
+
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+
+    // updated-desc (default)
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+};
+
 // フロントマター生成用の関数
 export const generateFrontMatter = (note: Note): string => {
   const { createdAt, updatedAt, metadata } = note;
