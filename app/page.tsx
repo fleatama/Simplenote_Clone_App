@@ -40,6 +40,13 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("source");
   const [showMetadata, setShowMetadata] = useState<boolean>(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("updated-desc");
+
+  // 保存済みのソート選択を復元する
+  useEffect(() => {
+    const savedSort = localStorage.getItem("note-sort-mode") as SortMode;
+    if (savedSort) setSortMode(savedSort);
+  }, []);
   
   // スマホ表示時に明示的に一覧を表示しているかどうかを管理するステート
   const [mobileShowList, setMobileShowList] = useState<boolean>(false);
