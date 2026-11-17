@@ -483,7 +483,7 @@ export default function Home() {
       <div className="row g-0 flex-grow-1 overflow-hidden">
         {/* 左側：メモ一覧 (スマホでは一覧表示フラグが有効な場合、またはノート未選択時に表示) */}
         <div className={`col-md-4 border-end d-flex flex-column h-100 ${selectedNoteId && !mobileShowList ? 'd-none d-md-flex' : 'd-flex'}`}>
-          <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-body-tertiary">
+          <div className="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2 bg-body-tertiary">
             {/* ログインユーザー情報表示 */}
             <div className="small text-muted mb-2 d-flex align-items-center gap-2">
               {session?.user?.image && (
